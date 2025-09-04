@@ -39,8 +39,6 @@
     table{ width:100%; border-collapse:collapse; min-width:760px }
     th,td{ padding:10px; border:1px solid #ccc; text-align:center; vertical-align:middle }
     th{ background-color:#00416A; color:white; position:sticky; top:0 }
-    td button{ padding:6px 10px; margin:2px; border:none; border-radius:6px; font-size:14px; cursor:pointer }
-    .td-cant input{ width:110px; text-align:right; padding:6px 8px; border:1px solid #ddd }
     .resumen{ background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:10px; display:flex; gap:16px; flex-wrap:wrap }
     thead th:nth-child(5), thead th:nth-child(6),
     tbody td:nth-child(5), tbody td:nth-child(6){ display:none; } /* ocultar precio/importe */
@@ -68,11 +66,10 @@
     .modal input[type="text"]{ border:1px solid #ddd; background:white; color:#111; width: min(560px, 86vw) }
     .modal .grid{ display:grid; grid-template-columns:1fr; gap:10px }
     @media (min-width:720px){ .modal .grid{ grid-template-columns:1fr 1fr } }
-    .producto{
+    .producto-card{
       border:2px solid #333; border-radius:8px; padding:10px; background:#fff;
       box-shadow: 2px 2px 6px rgba(0,0,0,0.08);
     }
-    .producto b{ font-size:15px }
     .precios{ margin-top:6px; display:flex; flex-direction:column; gap:2px; font-size:14px }
     .precio-publico{ font-weight:700; color:#1a7c1a }
     .precio-medio{ color:#004080 }
@@ -82,7 +79,16 @@
     .btn-danger{ background:#d62828; color:white; font-weight:600 }
     .btn-ok{ background:#1e8e3e; color:white; font-weight:700 }
 
-    .row-actions{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap }
+    /* Tarjeta de previsualización */
+    .preview{
+      margin-top:10px; background:#ffffffdd; color:#111; border-radius:10px; padding:10px;
+      border:2px dashed #0c6cbd; max-width:820px;
+    }
+    .preview .title{ font-weight:700; color:#0c2a5e }
+    .preview .row{ display:flex; gap:12px; flex-wrap:wrap; margin-top:6px }
+    .preview .pill{ background:#e8edf6; padding:4px 10px; border-radius:999px; font-weight:600; }
+    .ok{ color:#1e8e3e; font-weight:700 }
+    .warn{ color:#b36b00; font-weight:700 }
 
     @media print{ .wm-logo{ display:none } .modal{ display:none !important } }
   </style>
@@ -138,24 +144,36 @@
     <div class="fila sec">
       <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras...">
       <input type="number" id="cantidad" placeholder="Cantidad" value="1.000" step="0.001" min="0.001">
-      <button class="boton" id="agregar">➕ Agregar</button>
+      <button class="boton" id="agregar">➕ Agregar (guardar)</button>
       <button class="boton" id="abrirBuscador">🔎 Buscar</button>
       <button class="boton" id="scanBtn">📷 Escanear</button>
+    </div>
+
+    <!-- Previsualización -->
+    <div id="preview" class="preview" style="display:none">
+      <div class="title">Previsualización del artículo</div>
+      <div class="row">
+        <span id="pDesc" class="pill"></span>
+        <span id="pCodigo" class="pill"></span>
+        <span id="pPrecio" class="pill"></span>
+        <span id="pPeso" class="pill" style="display:none"></span>
+      </div>
+      <div id="pAviso" style="margin-top:8px" class="muted"></div>
     </div>
 
     <div id="lector" style="display:none; background:#fff; padding:10px; border-radius:8px; width:min(360px,92vw)"></div>
 
     <div class="fila acciones sec">
-      <button class="boton" id="guardar">💾 Guardar Inventario</button>
-      <button class="boton" id="exportar-actual">📥 Descargar Excel (actual)</button>
-      <button class="btn-danger" id="limpiar">🧹 Limpiar lista</button>
+      <!-- Quitado botón Guardar Inventario -->
+      <button class="boton" id="exportar-actual">📥 Descargar Excel (último)</button>
+      <button class="btn-danger" id="limpiar">🧹 Limpiar (solo limpia la vista)</button>
     </div>
 
     <div class="contenedor-tabla">
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Fecha</th><th>Acciones</th>
+            <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Fecha</th>
           </tr>
         </thead>
         <tbody id="tabla-productos"></tbody>
@@ -163,8 +181,8 @@
     </div>
 
     <div class="resumen sec">
-      <div><b>Renglones:</b> <span id="tRenglones">0</span></div>
-      <div><b>Suma cantidades:</b> <span id="tCantidad">0.000</span></div>
+      <div><b>Renglones (solo último):</b> <span id="tRenglones">0</span></div>
+      <div><b>Cantidad (último):</b> <span id="tCantidad">0.000</span></div>
     </div>
   </main>
 
@@ -234,13 +252,20 @@
     const btnAgregar = $("agregar");
     const exportarActBtn = $("exportar-actual");
     const limpiarBtn = $("limpiar");
-    const guardarBtn = $("guardar");
     const folioSpan = $("folio");
     const tabla = $("tabla-productos");
     const tRenglones = $("tRenglones");
     const tCantidad = $("tCantidad");
 
     const chipModo = $("chipModo");
+
+    // Preview nodes
+    const previewBox = $("preview");
+    const pDesc = $("pDesc");
+    const pCodigo = $("pCodigo");
+    const pPrecio = $("pPrecio");
+    const pPeso = $("pPeso");
+    const pAviso = $("pAviso");
 
     // Modal buscador
     const modal = $("modal");
@@ -259,24 +284,20 @@
     const divLector = $("lector");
 
     // ----------------- Estado -----------------
-    let articulosEscaneados = JSON.parse(localStorage.getItem("articulosEscaneadosAnuales")) || [];
+    let ultimoRegistro = null;     // último guardado (para la tabla)
+    let productoPreview = null;    // {descripcion,codigo,precio,cantidad?} para previsualización
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
     let palabraClaveGuardada = localStorage.getItem("claveInventarioAnuales") || "";
     let cacheProductos = JSON.parse(localStorage.getItem("cacheProductosAnuales") || "{}");
 
-    // Modo fijo: ACUMULAR
-    const modoAcumular = true;
     chipModo.textContent = "Modo: Acumular";
-
-    // Pila de deshacer (sin botones)
-    let undoStack = [];
 
     // buscador
     let resultados = [];
     let pagina = 0;
     const porPagina = 20;
 
-    // Cargar estado (incluye sucursal)
+    // Cargar estado (incluye sucursal/usuario)
     const usuarioPrevio = localStorage.getItem("usuarioInventarioAnuales") || "";
     const sucursalPrev = localStorage.getItem("sucursalInventarioAnuales") || "";
     if (usuarioPrevio) selectUsuario.value = usuarioPrevio;
@@ -284,7 +305,7 @@
 
     folioSpan.textContent = folio;
     inputClave.value = palabraClaveGuardada;
-    actualizarTabla();
+    renderTablaUltimo();
 
     // ----------------- Generar folio -----------------
     function generarFolio() {
@@ -327,7 +348,7 @@
       return null;
     }
 
-    async function buscarProductoPorCodigo(codigoInput){
+    async function resolverProducto(codigoInput){
       const codigoStr = String(codigoInput).trim();
 
       // 1) Balanza
@@ -341,7 +362,8 @@
               descripcion: d.concepto ?? "Sin descripción",
               codigo: eq.principal,
               precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0),DEC_PRECIO),
-              cantidad: roundTo(detectado.pesoKg,DEC_CANTIDAD)
+              cantidad: roundTo(detectado.pesoKg,DEC_CANTIDAD),
+              isPeso: true
             };
           }
         }
@@ -376,174 +398,167 @@
       throw new Error("Producto no encontrado");
     }
 
-    // ----------------- Acciones inventario -----------------
-    btnAgregar.addEventListener("click", agregarArticuloDesdeInputs);
-    inputCodigo.addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();inputCantidad.focus();} });
-    inputCantidad.addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();agregarArticuloDesdeInputs();} });
-
-    async function agregarArticuloDesdeInputs(){
-      const codigo=(inputCodigo.value||"").trim();
-      let cantidad=roundTo(parseFloat(inputCantidad.value||"1"),DEC_CANTIDAD);
-      if(!codigo) return;
+    // ----------------- PREVISUALIZACIÓN -----------------
+    async function previsualizar(){
+      const codigo = (inputCodigo.value||"").trim();
+      if(!codigo){ ocultarPreview(); return; }
 
       try{
-        const p=await buscarProductoPorCodigo(codigo);
-        if(p.cantidad) cantidad=p.cantidad;
-        pushUndo();
-        upsertRenglon(p.codigo, p.descripcion, p.precio, cantidad);
-        actualizarTabla();
-        inputCodigo.value="";inputCantidad.value="1.000";inputCodigo.focus();
-      }catch(e){ alert("Producto no encontrado"); }
-    }
+        const p = await resolverProducto(codigo);
+        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, precio:p.precio, cantidad: p.cantidad, isPeso: !!p.isPeso };
 
-    function upsertRenglon(codigo, descripcion, precio, cantidad){
-      const idx=articulosEscaneados.findIndex(x=>x.codigo===codigo);
-      const nowISO = new Date().toISOString();
-
-      if(idx!==-1){
-        articulosEscaneados[idx].cantidad = roundTo(Number(articulosEscaneados[idx].cantidad)+cantidad,DEC_CANTIDAD);
-        articulosEscaneados[idx].precio = roundTo(precio ?? 0, DEC_PRECIO);
-        articulosEscaneados[idx].timestamp = nowISO;
-      }else{
-        articulosEscaneados.push({descripcion, codigo, precio:roundTo(precio ?? 0, DEC_PRECIO), cantidad:roundTo(cantidad,DEC_CANTIDAD), timestamp: nowISO});
+        // Pintar UI
+        pDesc.textContent = p.descripcion || "SIN DESCRIPCIÓN";
+        pCodigo.textContent = `Código: ${p.codigo}`;
+        pPrecio.textContent = `Precio público: $${fmt(p.precio ?? 0, DEC_PRECIO)}`;
+        if(p.isPeso){
+          pPeso.style.display = "inline-block";
+          pPeso.textContent = `Peso detectado: ${fmt(p.cantidad, DEC_CANTIDAD)} kg`;
+          inputCantidad.value = fmt(p.cantidad, DEC_CANTIDAD);
+          pAviso.innerHTML = `<span class="ok">✔ Código de balanza detectado.</span> Ajusta la cantidad si es necesario y luego presiona <b>Agregar</b>.`;
+        }else{
+          pPeso.style.display = "none";
+          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
+        }
+        previewBox.style.display = "block";
+      }catch(e){
+        ocultarPreview();
+        alert("No se encontró el producto");
       }
     }
 
-    function actualizarTabla(){
-      tabla.innerHTML="";
-      let sumaCant=0;
+    function ocultarPreview(){
+      previewBox.style.display = "none";
+      pDesc.textContent = "";
+      pCodigo.textContent = "";
+      pPrecio.textContent = "";
+      pPeso.textContent = "";
+      pAviso.textContent = "";
+      productoPreview = null;
+    }
 
-      articulosEscaneados.forEach((p,i)=>{
-        sumaCant+=Number(p.cantidad)||0;
+    // Lanzar preview al presionar Enter en código o al salir del campo
+    inputCodigo.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ e.preventDefault(); previsualizar().then(()=> inputCantidad.focus()); }
+    });
+    inputCodigo.addEventListener("blur", ()=>{ if(inputCodigo.value.trim()) previsualizar(); });
 
-        const tr=document.createElement("tr");
+    // ----------------- GUARDADO INMEDIATO -----------------
+    async function guardarRegistroInmediato(item){
+      if(!selectSucursal.value) throw new Error("Selecciona una sucursal");
+      if(!selectUsuario.value) throw new Error("Selecciona un usuario");
 
-        const tdIdx = document.createElement("td"); tdIdx.textContent = i+1;
-        const tdDesc = document.createElement("td"); tdDesc.textContent = p.descripcion;
-        const tdCod = document.createElement("td"); tdCod.textContent = p.codigo;
+      const folioRegistro = generarFolio();
 
-        const tdCant = document.createElement("td"); tdCant.className = "td-cant";
-        const inp = document.createElement("input");
-        inp.type="number"; inp.step="0.001"; inp.min="0.000";
-        inp.value = fmt(p.cantidad, DEC_CANTIDAD);
-        inp.addEventListener("change", ()=>{
-          pushUndo();
-          p.cantidad = roundTo(parseFloat(inp.value||"0"), DEC_CANTIDAD);
-          persistLocal();
-          renderResumen();
-        });
-        tdCant.appendChild(inp);
+      const registro = {
+        folioSesion: folio,
+        folioRegistro,
+        fecha: new Date().toISOString(),
+        sucursal: selectSucursal.value,
+        usuario: selectUsuario.value,
+        palabraClave: inputClave.value.trim() || null,
+        ...item,
+        importe: roundTo((+item.cantidad||0) * (+item.precio||0), DEC_IMPORTE)
+      };
 
-        const tdPrecio = document.createElement("td"); tdPrecio.textContent = "$"+fmt(p.precio, DEC_PRECIO);
-        const tdImporte = document.createElement("td"); tdImporte.textContent = "$"+fmt((Number(p.cantidad)||0)*(Number(p.precio)||0), DEC_IMPORTE);
-        const tdFecha = document.createElement("td"); tdFecha.textContent = (p.timestamp||"").slice(0,19).replace('T',' ');
+      await addDoc(
+        collection(db,"inventarios", selectSucursal.value, selectUsuario.value, "escaneos"),
+        registro
+      );
 
-        const tdAcc = document.createElement("td");
-        tdAcc.className = "row-actions";
-        const bDel = document.createElement("button"); bDel.textContent="🗑️";
-        bDel.addEventListener("click", ()=>{ if(confirm("¿Eliminar renglón?")){ pushUndo(); articulosEscaneados.splice(i,1); actualizarTabla(); }});
-        const bAdd = document.createElement("button"); bAdd.textContent="+0.001";
-        bAdd.addEventListener("click", ()=>{ pushUndo(); p.cantidad = roundTo((Number(p.cantidad)||0)+0.001, DEC_CANTIDAD); persistLocal(); actualizarTabla(); });
-        const bSub = document.createElement("button"); bSub.textContent="-0.001";
-        bSub.addEventListener("click", ()=>{ pushUndo(); p.cantidad = Math.max(0, roundTo((Number(p.cantidad)||0)-0.001, DEC_CANTIDAD)); persistLocal(); actualizarTabla(); });
+      ultimoRegistro = registro;
+      renderTablaUltimo();
+    }
 
-        tdAcc.appendChild(bDel); tdAcc.appendChild(bAdd); tdAcc.appendChild(bSub);
-
-        tr.append(tdIdx, tdDesc, tdCod, tdCant, tdPrecio, tdImporte, tdFecha, tdAcc);
-        tabla.appendChild(tr);
-      });
-
-      renderResumen();
+    function renderTablaUltimo(){
+      tabla.innerHTML = "";
+      if(!ultimoRegistro){
+        tRenglones.textContent = "0";
+        tCantidad.textContent = "0.000";
+        return;
+      }
+      const p = ultimoRegistro;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>1</td>
+        <td>${p.descripcion}</td>
+        <td>${p.codigo}</td>
+        <td>${fmt(p.cantidad, DEC_CANTIDAD)}</td>
+        <td>$${fmt(p.precio, DEC_PRECIO)}</td>
+        <td>$${fmt(p.importe, DEC_IMPORTE)}</td>
+        <td>${(p.fecha||"").slice(0,19).replace('T',' ')}</td>
+      `;
+      tabla.appendChild(tr);
+      tRenglones.textContent = "1";
+      tCantidad.textContent = fmt(p.cantidad, DEC_CANTIDAD);
       persistLocal();
     }
 
-    function renderResumen(){
-      tRenglones.textContent=articulosEscaneados.length;
-      const sumaCant = articulosEscaneados.reduce((a,b)=> a + (Number(b.cantidad)||0), 0);
-      tCantidad.textContent=fmt(sumaCant,DEC_CANTIDAD);
-    }
+    // ----------------- Agregar (usar preview y guardar) -----------------
+    btnAgregar.addEventListener("click", agregarYGuardar);
+    inputCantidad.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ e.preventDefault(); agregarYGuardar(); }
+    });
 
-    // ----------------- Persistencia local -----------------
-    function persistLocal(){
-      localStorage.setItem("articulosEscaneadosAnuales", JSON.stringify(articulosEscaneados));
-      localStorage.setItem("folioInventarioAnuales", folio);
-      localStorage.setItem("claveInventarioAnuales", inputClave.value.trim());
-      localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
-      localStorage.setItem("sucursalInventarioAnuales", selectSucursal.value);
-    }
-
-    // ----------------- Deshacer (sin UI) -----------------
-    function pushUndo(){
-      undoStack.push(JSON.stringify(articulosEscaneados));
-      if(undoStack.length>30) undoStack.shift();
-    }
-
-    // ----------------- Guardado Firestore -----------------
-    guardarBtn.addEventListener("click", async ()=>{
-      if(!articulosEscaneados.length) return alert("No hay artículos");
-      if(!selectSucursal.value) return alert("Selecciona una sucursal");
-      if(!selectUsuario.value) return alert("Selecciona un usuario");
-
-      folio=generarFolio(); folioSpan.textContent=folio;
-
-      const grupo={
-        folio,
-        fecha:new Date().toISOString(),
-        sucursal: selectSucursal.value,
-        usuario: selectUsuario.value,
-        palabraClave: inputClave.value.trim()||null,
-        articulos:articulosEscaneados,
-        totalArticulos:articulosEscaneados.length,
-        sumaCantidades:articulosEscaneados.reduce((a,b)=>a+(+b.cantidad||0),0),
-        sumaImporte:roundTo(articulosEscaneados.reduce((a,b)=>a+((+b.cantidad||0)*(+b.precio||0)),0),DEC_IMPORTE)
-      };
-
+    async function agregarYGuardar(){
       try{
-        // inventarios/{sucursal}/{usuario}/escaneos
-        await addDoc(
-          collection(db,"inventarios", selectSucursal.value, selectUsuario.value, "escaneos"),
-          grupo
-        );
-        alert(`✅ Guardado folio ${folio} en sucursal: ${selectSucursal.value}`);
-        pushUndo();
-        articulosEscaneados=[];
-        actualizarTabla();
+        let p = productoPreview;
+        // Si no hay preview (p.ej. escribieron y dieron directo Agregar), resolvemos
+        if(!p){
+          await previsualizar();
+          p = productoPreview;
+        }
+        if(!p) throw new Error("Primero escanea/escribe un código válido");
+
+        let cantidad = roundTo(parseFloat(inputCantidad.value|| (p.cantidad ?? "1")), DEC_CANTIDAD);
+        if(isNaN(cantidad) || cantidad<=0) throw new Error("Cantidad inválida");
+
+        await guardarRegistroInmediato({
+          descripcion: p.descripcion,
+          codigo: p.codigo,
+          precio: p.precio ?? 0,
+          cantidad
+        });
+
+        // limpiar para el siguiente
+        inputCodigo.value = "";
+        inputCantidad.value = "1.000";
+        ocultarPreview();
+        inputCodigo.focus();
       }catch(e){
-        console.error(e);
-        alert("Error al guardar");
+        alert(e.message || "Error al guardar");
       }
-    });
+    }
 
-    // ----------------- Excel -----------------
+    // ----------------- Botones Exportar / Limpiar -----------------
     exportarActBtn.addEventListener("click", ()=>{
-      if(!articulosEscaneados.length) return alert("No hay artículos");
-      exportarAExcel(articulosEscaneados,folio, selectSucursal.value);
+      if(!ultimoRegistro) return alert("No hay registro reciente para exportar");
+      exportarAExcel([ultimoRegistro], ultimoRegistro.folioRegistro, ultimoRegistro.sucursal);
     });
 
-    function exportarAExcel(lista,folio,sucursal){
-      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","Folio","Sucursal"]];
+    function exportarAExcel(lista,folioReg,sucursal){
+      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","FolioRegistro","Sucursal","Usuario"]];
       const datos=lista.map((p,i)=>[
         i+1,p.descripcion,p.codigo,
         fmt(p.cantidad,DEC_CANTIDAD),
         fmt(p.precio,DEC_PRECIO),
-        fmt((Number(p.cantidad)||0)*(Number(p.precio)||0),DEC_IMPORTE),
-        (p.timestamp||"").slice(0,19).replace('T',' '),
-        folio,
-        sucursal || ""
+        fmt(p.importe,DEC_IMPORTE),
+        (p.fecha||"").slice(0,19).replace('T',' '),
+        p.folioRegistro,
+        p.sucursal || "",
+        p.usuario || ""
       ]);
       const wb=XLSX.utils.book_new();
       const ws=XLSX.utils.aoa_to_sheet(encabezados.concat(datos));
-      XLSX.utils.book_append_sheet(wb,ws,"Inventario");
+      XLSX.utils.book_append_sheet(wb,ws,"Último");
       const suf = sucursal ? `_${sucursal.replace(/\s+/g,'_')}` : "";
-      XLSX.writeFile(wb,`Inventario_${folio}${suf}.xlsx`);
+      XLSX.writeFile(wb,`InventarioUltimo_${folioReg}${suf}.xlsx`);
     }
 
     limpiarBtn.addEventListener("click", ()=>{
-      if(confirm("¿Limpiar lista?")){
-        pushUndo();
-        articulosEscaneados=[];
-        actualizarTabla();
-      }
+      ultimoRegistro = null;
+      renderTablaUltimo();
+      ocultarPreview();
     });
 
     // ----------------- Buscador (modal) -----------------
@@ -630,7 +645,7 @@
 
       lista.forEach(p=>{
         const div = document.createElement("div");
-        div.className = "producto";
+        div.className = "producto-card";
 
         const precioPublico = p.precioPublico!=null ? Number(p.precioPublico) : (p.precio!=null ? Number(p.precio) : null);
         const medio = p.medioMayoreo!=null ? Number(p.medioMayoreo) : null;
@@ -649,16 +664,22 @@
             <span class="precio-medio">Medio Mayoreo: $${medio!=null ? medio.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
             <span class="precio-mayoreo">Mayoreo: $${mayo!=null ? mayo.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
           </div>
-          <div class="row-actions" style="margin-top:8px">
-            <button class="btn-ok">Agregar</button>
+          <div style="margin-top:8px">
+            <button class="btn-ok">Usar en previsualización</button>
           </div>
         `;
 
+        // En buscador, no guarda directo: pasa a previsualización y cierra modal
         div.querySelector(".btn-ok").addEventListener("click", ()=>{
-          const precio = precioPublico!=null ? precioPublico : 0;
-          pushUndo();
-          upsertRenglon(p.id, p.concepto||"Sin desc", precio, 1);
-          actualizarTabla();
+          productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id, precio: precioPublico??0 };
+          pDesc.textContent = productoPreview.descripcion;
+          pCodigo.textContent = `Código: ${productoPreview.codigo}`;
+          pPrecio.textContent = `Precio público: $${fmt(productoPreview.precio, DEC_PRECIO)}`;
+          pPeso.style.display = "none";
+          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
+          previewBox.style.display = "block";
+          cerrarModal();
+          inputCantidad.focus();
         });
 
         resultadosDiv.appendChild(div);
@@ -669,7 +690,7 @@
       btnNext.disabled = fin >= resultados.length;
     }
 
-    // ----------------- Escáner -----------------
+    // ----------------- Escáner (solo previsualiza; no guarda) -----------------
     let lector = null;
     scanBtn.addEventListener("click", async ()=>{
       if(lector){
@@ -688,11 +709,8 @@
             await lector.stop(); lector = null; divLector.style.display="none";
             inputCodigo.value = codigo;
             try{
-              const p=await buscarProductoPorCodigo(codigo);
-              const cant = p.cantidad ?? roundTo(parseFloat(inputCantidad.value||"1"),DEC_CANTIDAD);
-              pushUndo();
-              upsertRenglon(p.codigo, p.descripcion, p.precio, cant);
-              actualizarTabla();
+              await previsualizar();
+              inputCantidad.focus();
             }catch(e){
               abrirModal();
               inputBuscador.value = codigo;
@@ -707,7 +725,13 @@
       }
     });
 
-    // ----------------- Autosave de campos -----------------
+    // ----------------- Persistencia mínima -----------------
+    function persistLocal(){
+      localStorage.setItem("folioInventarioAnuales", folio);
+      localStorage.setItem("claveInventarioAnuales", inputClave.value.trim());
+      localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
+      localStorage.setItem("sucursalInventarioAnuales", selectSucursal.value);
+    }
     inputClave.addEventListener("change", persistLocal);
     selectUsuario.addEventListener("change", persistLocal);
     selectSucursal.addEventListener("change", persistLocal);
