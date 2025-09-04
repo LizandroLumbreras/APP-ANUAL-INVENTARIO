@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>INVENTARIOS ANUALES PROVEEDORA</title>
+
+  <!-- Fuente y librerías -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    :root{
+      --wm-size: clamp(600px, 80vmin, 1400px);
+      --wm-opacity: .14;
+      --wm-rotate: 0deg;
+      --wm-blend: normal;
+      --azul:#00416A; --accent:#0c6cbd;
+    }
+    *{ box-sizing: border-box }
+    body{
+      font-family:'Poppins',sans-serif;
+      background:linear-gradient(to right,#00416A,#E4E5E6);
+      color:white; padding:20px; margin:0; min-height:100vh;
+    }
+    h1{ text-align:center; margin-bottom:12px }
+
+    .fila{ display:flex; flex-wrap:wrap; gap:10px; align-items:center }
+    .folio-box{ background:white; color:#00416A; font-weight:bold; padding:6px 12px; border-radius:8px; display:inline-block }
+    input,button,select{ font-family:inherit; padding:10px; font-size:16px; border-radius:6px; border:none }
+    input[type="text"], input[type="number"]{ width:100%; max-width:320px }
+    select{ min-width:220px }
+    .acciones button{ width:auto }
+    .boton{ background:#0c6cbd; color:white; font-weight:bold; cursor:pointer; transition:background .25s }
+    .boton:hover{ background:#084f92 }
+    .sec{ margin-top:12px }
+    .contenedor-tabla{ background:white; color:black; border-radius:8px; overflow-x:auto; margin-top:14px }
+    table{ width:100%; border-collapse:collapse; min-width:760px }
+    th,td{ padding:10px; border:1px solid #ccc; text-align:center; vertical-align:middle }
+    th{ background-color:#00416A; color:white; position:sticky; top:0 }
+    td button{ padding:6px 10px; margin:2px; border:none; border-radius:6px; font-size:14px; cursor:pointer }
+    .td-cant input{ width:110px; text-align:right; padding:6px 8px; border:1px solid #ddd }
+    .resumen{ background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:10px; display:flex; gap:16px; flex-wrap:wrap }
+    thead th:nth-child(5), thead th:nth-child(6),
+    tbody td:nth-child(5), tbody td:nth-child(6){ display:none; } /* ocultar precio/importe */
+    .wm-logo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+    .wm-logo img{
+      position:absolute; top:50%; left:50%;
+      transform: translate(-50%, -50%) rotate(var(--wm-rotate));
+      width: var(--wm-size); height:auto;
+      opacity: var(--wm-opacity);
+      mix-blend-mode: var(--wm-blend);
+      filter: grayscale(20%) saturate(120%) contrast(105%);
+    }
+    main{ position:relative; z-index:1; }
+
+    .muted{opacity:.9}
+    .chip{ background:white; color:#00416A; border-radius:100px; padding:4px 10px; font-size:12px; font-weight:600 }
+
+    /* Modal buscador */
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:10; }
+    .modal .box{
+      width:min(960px,96vw); max-height:90vh; overflow:auto; background:#f9f9fb; color:#111; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(0,0,0,.3)
+    }
+    .modal header{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px }
+    .modal header .left{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+    .modal input[type="text"]{ border:1px solid #ddd; background:white; color:#111; width: min(560px, 86vw) }
+    .modal .grid{ display:grid; grid-template-columns:1fr; gap:10px }
+    @media (min-width:720px){ .modal .grid{ grid-template-columns:1fr 1fr } }
+    .producto{
+      border:2px solid #333; border-radius:8px; padding:10px; background:#fff;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.08);
+    }
+    .producto b{ font-size:15px }
+    .precios{ margin-top:6px; display:flex; flex-direction:column; gap:2px; font-size:14px }
+    .precio-publico{ font-weight:700; color:#1a7c1a }
+    .precio-medio{ color:#004080 }
+    .precio-mayoreo{ color:#b36b00 }
+    .paginacion{ display:flex; gap:8px; justify-content:center; align-items:center; padding:8px 0; }
+    .btn-ghost{ background:#e8edf6; color:#0c2a5e; font-weight:600 }
+    .btn-danger{ background:#d62828; color:white; font-weight:600 }
+    .btn-ok{ background:#1e8e3e; color:white; font-weight:700 }
+
+    .row-actions{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap }
+
+    @media print{ .wm-logo{ display:none } .modal{ display:none !important } }
+  </style>
+</head>
+<body>
+  <div class="wm-logo"><img src="logo-proveedora.webp" alt=""></div>
+
+  <main>
+    <h1>INVENTARIOS ANUALES PROVEEDORA</h1>
+
+    <div class="fila">
+      <div>Folio actual: <span class="folio-box" id="folio"></span></div>
+      <span class="chip" id="chipModo">Modo: Acumular</span>
+    </div>
+
+    <div class="fila sec">
+      <label for="palabraClave" style="min-width:140px">Palabra clave:</label>
+      <input type="text" id="palabraClave" placeholder="Ej. BODEGA, URGENTE, PROV">
+      <label for="usuario" style="min-width:100px">Usuario:</label>
+      <select id="usuario">
+        <option value="">-- Selecciona usuario --</option>
+        <option value="Blanca">Blanca</option>
+        <option value="Lizandro">Lizandro</option>
+        <option value="Edgardo">Edgardo</option>
+        <option value="Fernanda">Fernanda</option>
+        <option value="Vansessa">Vansessa</option>
+        <option value="Esmeralda">Esmeralda</option>
+        <option value="Gibran">Gibran</option>
+        <option value="Roberto">Roberto</option>
+        <option value="Usuario 1">Usuario 1</option>
+        <option value="Usuario 2">Usuario 2</option>
+        <option value="Usuario 3">Usuario 3</option>
+        <option value="Usuario 4">Usuario 4</option>
+        <option value="Usuario 5">Usuario 5</option>
+      </select>
+    </div>
+
+    <div class="fila sec">
+      <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras...">
+      <input type="number" id="cantidad" placeholder="Cantidad" value="1.000" step="0.001" min="0.001">
+      <button class="boton" id="agregar">➕ Agregar</button>
+      <button class="boton" id="abrirBuscador">🔎 Buscar</button>
+      <button class="boton" id="scanBtn">📷 Escanear</button>
+    </div>
+
+    <div id="lector" style="display:none; background:#fff; padding:10px; border-radius:8px; width:min(360px,92vw)"></div>
+
+    <div class="fila acciones sec">
+      <button class="boton" id="guardar">💾 Guardar Inventario</button>
+      <button class="boton" id="exportar-actual">📥 Descargar Excel (actual)</button>
+      <button class="btn-danger" id="limpiar">🧹 Limpiar lista</button>
+    </div>
+
+    <div class="contenedor-tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Fecha</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-productos"></tbody>
+      </table>
+    </div>
+
+    <div class="resumen sec">
+      <div><b>Renglones:</b> <span id="tRenglones">0</span></div>
+      <div><b>Suma cantidades:</b> <span id="tCantidad">0.000</span></div>
+    </div>
+  </main>
+
+  <!-- Modal Buscador -->
+  <div class="modal" id="modal">
+    <div class="box">
+      <header>
+        <div class="left">
+          <strong>🔎 Buscador de artículos</strong>
+          <input type="text" id="buscador" placeholder="Escribe código o nombre...">
+        </div>
+        <div class="right">
+          <button class="btn-ghost" id="cerrarModal">✖ Cerrar</button>
+        </div>
+      </header>
+
+      <div class="muted" style="padding:6px 2px">
+        <progress id="barraProgreso" value="0" max="100" style="width:180px"></progress>
+        <span id="estado"></span>
+      </div>
+
+      <div id="resultados" class="grid"></div>
+
+      <div class="paginacion">
+        <button id="prev" class="btn-ghost" disabled>⬅ Anterior</button>
+        <span id="contador" class="muted"></span>
+        <button id="next" class="btn-ghost" disabled>Siguiente ➡</button>
+      </div>
+    </div>
+  </div>
+
+  <footer style="text-align:center; margin-top:18px; opacity:.9">
+    Powered by <b>PROVSOFT</b>
+  </footer>
+
+  <script type="module">
+    // ----------------- Firebase -----------------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, getDocs, getDoc, query, where, doc, limit
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const DEC_CANTIDAD = 3, DEC_PRECIO = 2, DEC_IMPORTE = 2;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.appspot.com",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ----------------- Utilidades -----------------
+    const roundTo = (num, dec) => Math.round((Number(num) + Number.EPSILON) * 10**dec) / 10**dec;
+    const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
+    const $ = (id) => document.getElementById(id);
+
+    const inputClave = $("palabraClave");
+    const inputCodigo = $("codigo");
+    const inputCantidad = $("cantidad");
+    const selectUsuario = $("usuario");
+    const btnAgregar = $("agregar");
+    const exportarActBtn = $("exportar-actual");
+    const limpiarBtn = $("limpiar");
+    const guardarBtn = $("guardar");
+    const folioSpan = $("folio");
+    const tabla = $("tabla-productos");
+    const tRenglones = $("tRenglones");
+    const tCantidad = $("tCantidad");
+
+    const chipModo = $("chipModo");
+
+    // Modal buscador
+    const modal = $("modal");
+    const abrirBuscadorBtn = $("abrirBuscador");
+    const cerrarModalBtn = $("cerrarModal");
+    const inputBuscador = $("buscador");
+    const resultadosDiv = $("resultados");
+    const barraProgreso = $("barraProgreso");
+    const estado = $("estado");
+    const contador = $("contador");
+    const btnPrev = $("prev");
+    const btnNext = $("next");
+
+    // Escáner
+    const scanBtn = $("scanBtn");
+    const divLector = $("lector");
+
+    // ----------------- Estado -----------------
+    let articulosEscaneados = JSON.parse(localStorage.getItem("articulosEscaneadosAnuales")) || [];
+    let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
+    let palabraClaveGuardada = localStorage.getItem("claveInventarioAnuales") || "";
+    let cacheProductos = JSON.parse(localStorage.getItem("cacheProductosAnuales") || "{}");
+
+    // Modo fijo: ACUMULAR
+    const modoAcumular = true;
+    chipModo.textContent = "Modo: Acumular";
+
+    // Pila de deshacer (se mantiene por si luego la reactivas, pero sin botón)
+    let undoStack = [];
+
+    // buscador
+    let resultados = [];
+    let pagina = 0;
+    const porPagina = 20;
+
+    // Cargar estado
+    const usuarioPrevio = localStorage.getItem("usuarioInventarioAnuales") || "";
+    if (usuarioPrevio) selectUsuario.value = usuarioPrevio;
+    folioSpan.textContent = folio;
+    inputClave.value = palabraClaveGuardada;
+    actualizarTabla();
+
+    // ----------------- Generar folio -----------------
+    function generarFolio() {
+      const fecha = new Date();
+      let base = `AnualesPDD-${fecha.toISOString().slice(0,10).replace(/-/g,'')}-${fecha.getHours()}${String(fecha.getMinutes()).padStart(2,'0')}${String(fecha.getSeconds()).padStart(2,'0')}`;
+      const clave = inputClave?.value.trim();
+      if (clave) base += `-${clave.replace(/\s+/g,"_").toUpperCase()}`;
+      return base;
+    }
+
+    // ----------------- Balanzas -----------------
+    function detectarCodigoPeso(codigoStr){
+      if(/^\d{13}$/.test(codigoStr) && codigoStr.startsWith("20")){
+        const base = codigoStr.substring(0,7);
+        const pesoNum = parseInt(codigoStr.substring(7,12),10);
+        const pesoKg = pesoNum/1000;
+        return {base, pesoKg};
+      }
+      return null;
+    }
+
+    // ----------------- Resolución de producto -----------------
+    async function buscarEnEquivalencias(codigoInput) {
+      const codigoStr = String(codigoInput).trim();
+      const q = query(collection(db,"productos"), where("codigosEquivalentes","array-contains",codigoStr));
+      const snap = await getDocs(q);
+      if(!snap.empty){
+        const docu = snap.docs[0];
+        return {principal: docu.id, data: docu.data()};
+      }
+      return null;
+    }
+
+    async function getProductoPorId(id){
+      const ref = doc(db,"productos",id);
+      const byId = await getDoc(ref);
+      if(byId.exists()){
+        return { id, ...byId.data() };
+      }
+      return null;
+    }
+
+    async function buscarProductoPorCodigo(codigoInput){
+      const codigoStr = String(codigoInput).trim();
+
+      // 1) Balanza
+      const detectado = detectarCodigoPeso(codigoStr);
+      if(detectado){
+        const eq = await buscarEnEquivalencias(detectado.base);
+        if(eq && eq.principal){
+          const d = eq.data || (await getProductoPorId(eq.principal));
+          if(d){
+            return {
+              descripcion: d.concepto ?? "Sin descripción",
+              codigo: eq.principal,
+              precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0),DEC_PRECIO),
+              cantidad: roundTo(detectado.pesoKg,DEC_CANTIDAD)
+            };
+          }
+        }
+      }
+
+      // 2) Cache
+      if(cacheProductos[codigoStr]) return cacheProductos[codigoStr];
+
+      // 3) Buscar por codigoBarra
+      let q = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",codigoStr), limit(1));
+      let snap = await getDocs(q);
+      if(!snap.empty){
+        const d = snap.docs[0].data();
+        return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id, precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0), DEC_PRECIO) };
+      }
+
+      // 4) Equivalentes
+      const eq = await buscarEnEquivalencias(codigoStr);
+      if(eq && eq.principal){
+        const d = eq.data || (await getProductoPorId(eq.principal));
+        if(d){
+          return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal, precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0), DEC_PRECIO) };
+        }
+      }
+
+      // 5) ID directo
+      const byId = await getProductoPorId(codigoStr);
+      if(byId){
+        return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id, precio: roundTo(parseFloat(byId.precioPublico ?? byId.precio ?? 0), DEC_PRECIO) };
+      }
+
+      throw new Error("Producto no encontrado");
+    }
+
+    // ----------------- Acciones inventario -----------------
+    btnAgregar.addEventListener("click", agregarArticuloDesdeInputs);
+    inputCodigo.addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();inputCantidad.focus();} });
+    inputCantidad.addEventListener("keydown", e=>{ if(e.key==="Enter"){e.preventDefault();agregarArticuloDesdeInputs();} });
+
+    async function agregarArticuloDesdeInputs(){
+      const codigo=(inputCodigo.value||"").trim();
+      let cantidad=roundTo(parseFloat(inputCantidad.value||"1"),DEC_CANTIDAD);
+      if(!codigo) return;
+
+      try{
+        const p=await buscarProductoPorCodigo(codigo);
+        if(p.cantidad) cantidad=p.cantidad;
+        pushUndo(); // guardo snapshot por si luego reactivas “Deshacer”
+        upsertRenglon(p.codigo, p.descripcion, p.precio, cantidad);
+        actualizarTabla();
+        inputCodigo.value="";inputCantidad.value="1.000";inputCodigo.focus();
+      }catch(e){ alert("Producto no encontrado"); }
+    }
+
+    function upsertRenglon(codigo, descripcion, precio, cantidad){
+      const idx=articulosEscaneados.findIndex(x=>x.codigo===codigo);
+      const nowISO = new Date().toISOString();
+
+      if(idx!==-1){
+        // Modo fijo: ACUMULAR
+        articulosEscaneados[idx].cantidad = roundTo(Number(articulosEscaneados[idx].cantidad)+cantidad,DEC_CANTIDAD);
+        articulosEscaneados[idx].precio = roundTo(precio ?? 0, DEC_PRECIO);
+        articulosEscaneados[idx].timestamp = nowISO;
+      }else{
+        articulosEscaneados.push({descripcion, codigo, precio:roundTo(precio ?? 0, DEC_PRECIO), cantidad:roundTo(cantidad,DEC_CANTIDAD), timestamp: nowISO});
+      }
+    }
+
+    function actualizarTabla(){
+      tabla.innerHTML="";
+      let sumaCant=0;
+
+      articulosEscaneados.forEach((p,i)=>{
+        sumaCant+=Number(p.cantidad)||0;
+
+        const tr=document.createElement("tr");
+
+        const tdIdx = document.createElement("td"); tdIdx.textContent = i+1;
+        const tdDesc = document.createElement("td"); tdDesc.textContent = p.descripcion;
+        const tdCod = document.createElement("td"); tdCod.textContent = p.codigo;
+
+        const tdCant = document.createElement("td"); tdCant.className = "td-cant";
+        const inp = document.createElement("input");
+        inp.type="number"; inp.step="0.001"; inp.min="0.000";
+        inp.value = fmt(p.cantidad, DEC_CANTIDAD);
+        inp.addEventListener("change", ()=>{
+          pushUndo();
+          p.cantidad = roundTo(parseFloat(inp.value||"0"), DEC_CANTIDAD);
+          persistLocal();
+          renderResumen();
+        });
+        tdCant.appendChild(inp);
+
+        const tdPrecio = document.createElement("td"); tdPrecio.textContent = "$"+fmt(p.precio, DEC_PRECIO);
+        const tdImporte = document.createElement("td"); tdImporte.textContent = "$"+fmt((Number(p.cantidad)||0)*(Number(p.precio)||0), DEC_IMPORTE);
+        const tdFecha = document.createElement("td"); tdFecha.textContent = (p.timestamp||"").slice(0,19).replace('T',' ');
+
+        const tdAcc = document.createElement("td");
+        tdAcc.className = "row-actions";
+        const bDel = document.createElement("button"); bDel.textContent="🗑️";
+        bDel.addEventListener("click", ()=>{ if(confirm("¿Eliminar renglón?")){ pushUndo(); articulosEscaneados.splice(i,1); actualizarTabla(); }});
+        const bAdd = document.createElement("button"); bAdd.textContent="+0.001";
+        bAdd.addEventListener("click", ()=>{ pushUndo(); p.cantidad = roundTo((Number(p.cantidad)||0)+0.001, DEC_CANTIDAD); persistLocal(); actualizarTabla(); });
+        const bSub = document.createElement("button"); bSub.textContent="-0.001";
+        bSub.addEventListener("click", ()=>{ pushUndo(); p.cantidad = Math.max(0, roundTo((Number(p.cantidad)||0)-0.001, DEC_CANTIDAD)); persistLocal(); actualizarTabla(); });
+
+        tdAcc.appendChild(bDel); tdAcc.appendChild(bAdd); tdAcc.appendChild(bSub);
+
+        tr.append(tdIdx, tdDesc, tdCod, tdCant, tdPrecio, tdImporte, tdFecha, tdAcc);
+        tabla.appendChild(tr);
+      });
+
+      renderResumen();
+      persistLocal();
+    }
+
+    function renderResumen(){
+      tRenglones.textContent=articulosEscaneados.length;
+      const sumaCant = articulosEscaneados.reduce((a,b)=> a + (Number(b.cantidad)||0), 0);
+      tCantidad.textContent=fmt(sumaCant,DEC_CANTIDAD);
+    }
+
+    // ----------------- Persistencia local -----------------
+    function persistLocal(){
+      localStorage.setItem("articulosEscaneadosAnuales", JSON.stringify(articulosEscaneados));
+      localStorage.setItem("folioInventarioAnuales", folio);
+      localStorage.setItem("claveInventarioAnuales", inputClave.value.trim());
+      localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
+      // (ya no guardamos modo)
+    }
+
+    // ----------------- Deshacer (sin UI) -----------------
+    function pushUndo(){
+      undoStack.push(JSON.stringify(articulosEscaneados));
+      if(undoStack.length>30) undoStack.shift();
+    }
+
+    // ----------------- Guardado Firestore -----------------
+    guardarBtn.addEventListener("click", async ()=>{
+      if(!articulosEscaneados.length) return alert("No hay artículos");
+      if(!selectUsuario.value) return alert("Selecciona un usuario");
+      folio=generarFolio(); folioSpan.textContent=folio;
+
+      const grupo={
+        folio,
+        fecha:new Date().toISOString(),
+        articulos:articulosEscaneados,
+        totalArticulos:articulosEscaneados.length,
+        sumaCantidades:articulosEscaneados.reduce((a,b)=>a+(+b.cantidad||0),0),
+        sumaImporte:roundTo(articulosEscaneados.reduce((a,b)=>a+((+b.cantidad||0)*(+b.precio||0)),0),DEC_IMPORTE),
+        palabraClave:inputClave.value.trim()||null,
+        usuario:selectUsuario.value
+      };
+
+      try{
+        await addDoc(collection(db,"inventarios",selectUsuario.value,"escaneos"),grupo);
+        alert(`✅ Guardado folio ${folio}`);
+        pushUndo();
+        articulosEscaneados=[];
+        actualizarTabla();
+      }catch(e){
+        console.error(e);
+        alert("Error al guardar");
+      }
+    });
+
+    // ----------------- Excel -----------------
+    exportarActBtn.addEventListener("click", ()=>{
+      if(!articulosEscaneados.length) return alert("No hay artículos");
+      exportarAExcel(articulosEscaneados,folio);
+    });
+
+    function exportarAExcel(lista,folio){
+      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","Folio"]];
+      const datos=lista.map((p,i)=>[
+        i+1,p.descripcion,p.codigo,
+        fmt(p.cantidad,DEC_CANTIDAD),
+        fmt(p.precio,DEC_PRECIO),
+        fmt((Number(p.cantidad)||0)*(Number(p.precio)||0),DEC_IMPORTE),
+        (p.timestamp||"").slice(0,19).replace('T',' '),folio
+      ]);
+      const wb=XLSX.utils.book_new();
+      const ws=XLSX.utils.aoa_to_sheet(encabezados.concat(datos));
+      XLSX.utils.book_append_sheet(wb,ws,"Inventario");
+      XLSX.writeFile(wb,`Inventario_${folio}.xlsx`);
+    }
+
+    limpiarBtn.addEventListener("click", ()=>{
+      if(confirm("¿Limpiar lista?")){
+        pushUndo();
+        articulosEscaneados=[];
+        actualizarTabla();
+      }
+    });
+
+    // ----------------- Buscador (modal) -----------------
+    function abrirModal(){ modal.style.display="flex"; inputBuscador.focus(); }
+    function cerrarModal(){ modal.style.display="none"; resultadosDiv.innerHTML=""; contador.textContent=""; estado.textContent=""; barraProgreso.value=0; }
+    abrirBuscadorBtn.addEventListener("click", abrirModal);
+    cerrarModalBtn.addEventListener("click", cerrarModal);
+    modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
+
+    let debounceTimer;
+    inputBuscador.addEventListener("input", ()=>{
+      clearTimeout(debounceTimer);
+      const termino = inputBuscador.value.trim();
+      if(!termino){ resultadosDiv.innerHTML=""; contador.textContent=""; return; }
+      debounceTimer = setTimeout(()=> buscarProductos(termino), 600);
+    });
+
+    btnPrev.addEventListener("click", ()=> mostrarPagina(pagina-1));
+    btnNext.addEventListener("click", ()=> mostrarPagina(pagina+1));
+
+    async function buscarProductos(termino){
+      resultados = [];
+      resultadosDiv.innerHTML = "⏳ Buscando...";
+      barraProgreso.value = 10; estado.textContent = "";
+
+      // Si es código numérico → primero codigoBarra, luego equivalentes
+      if(/^\d+$/.test(termino)){
+        let q1 = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",termino), limit(1));
+        let s1 = await getDocs(q1);
+        let encontradoEn = "codigoBarra";
+
+        if(s1.empty){
+          const q2 = query(collection(db,"productos"), where("activo","==",true), where("codigosEquivalentes","array-contains",termino), limit(1));
+          const s2 = await getDocs(q2);
+          if(!s2.empty){
+            s1 = s2; encontradoEn = "equivalente";
+          }
+        }
+
+        if(!s1.empty){
+          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), coincidencia:encontradoEn, codigoBuscado:termino }));
+        }else{
+          resultadosDiv.innerHTML = "❌ No se encontró este código en productos ni en equivalentes";
+          contador.textContent = "";
+          barraProgreso.value = 100;
+          return;
+        }
+
+        barraProgreso.value = 100;
+        mostrarPagina(0);
+        return;
+      }
+
+      // Por texto (concepto)
+      barraProgreso.value = 25; estado.textContent = "Cargando productos activos…";
+      const q = query(collection(db,"productos"), where("activo","==",true));
+      const snap = await getDocs(q);
+
+      const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
+      resultados = [];
+      snap.forEach(docu=>{
+        const p = { id: docu.id, ...docu.data() };
+        if(p.concepto){
+          const ok = palabras.every(pal => String(p.concepto).toLowerCase().includes(pal));
+          if(ok) resultados.push(p);
+        }
+      });
+      barraProgreso.value = 100; estado.textContent = "";
+
+      if(!resultados.length){
+        resultadosDiv.innerHTML = "❌ No se encontraron resultados";
+        contador.textContent = "";
+      }else{
+        mostrarPagina(0);
+      }
+    }
+
+    function mostrarPagina(n){
+      pagina = n;
+      resultadosDiv.innerHTML = "";
+      const inicio = pagina * porPagina;
+      const fin = inicio + porPagina;
+      const lista = resultados.slice(inicio, fin);
+
+      lista.forEach(p=>{
+        const div = document.createElement("div");
+        div.className = "producto";
+
+        const precioPublico = p.precioPublico!=null ? Number(p.precioPublico) : (p.precio!=null ? Number(p.precio) : null);
+        const medio = p.medioMayoreo!=null ? Number(p.medioMayoreo) : null;
+        const mayo = p.mayoreo!=null ? Number(p.mayoreo) : null;
+
+        const equivBadge = p.coincidencia==="equivalente"
+          ? `<div style="color:#b00; font-size:12px">🔗 Coincidencia en equivalente (${p.codigoBuscado})</div>`
+          : "";
+
+        div.innerHTML = `
+          <b>${p.concepto || "SIN CONCEPTO"}</b><br>
+          Código: ${p.codigoBarra || p.id}
+          ${equivBadge}
+          <div class="precios">
+            <span class="precio-publico">Público: $${precioPublico!=null ? precioPublico.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
+            <span class="precio-medio">Medio Mayoreo: $${medio!=null ? medio.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
+            <span class="precio-mayoreo">Mayoreo: $${mayo!=null ? mayo.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
+          </div>
+          <div class="row-actions" style="margin-top:8px">
+            <button class="btn-ok">Agregar</button>
+          </div>
+        `;
+
+        div.querySelector(".btn-ok").addEventListener("click", ()=>{
+          const precio = precioPublico!=null ? precioPublico : 0;
+          pushUndo();
+          upsertRenglon(p.id, p.concepto||"Sin desc", precio, 1);
+          actualizarTabla();
+        });
+
+        resultadosDiv.appendChild(div);
+      });
+
+      contador.textContent = `Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.max(1, Math.ceil(resultados.length/porPagina))}`;
+      btnPrev.disabled = pagina===0;
+      btnNext.disabled = fin >= resultados.length;
+    }
+
+    // ----------------- Escáner -----------------
+    let lector = null;
+    scanBtn.addEventListener("click", async ()=>{
+      if(lector){
+        await lector.stop();
+        lector = null;
+        divLector.style.display = "none";
+        return;
+      }
+      divLector.style.display = "block";
+      lector = new Html5Qrcode("lector");
+      try{
+        await lector.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: 240 },
+          async codigo => {
+            await lector.stop(); lector = null; divLector.style.display="none";
+            inputCodigo.value = codigo;
+            try{
+              const p=await buscarProductoPorCodigo(codigo);
+              const cant = p.cantidad ?? roundTo(parseFloat(inputCantidad.value||"1"),DEC_CANTIDAD);
+              pushUndo();
+              upsertRenglon(p.codigo, p.descripcion, p.precio, cant);
+              actualizarTabla();
+            }catch(e){
+              abrirModal();
+              inputBuscador.value = codigo;
+              buscarProductos(codigo);
+            }
+          },
+          err => {}
+        );
+      }catch(e){
+        console.error("Error cámara:", e);
+        alert("No se pudo abrir la cámara");
+      }
+    });
+
+    // ----------------- Autosave de campos -----------------
+    inputClave.addEventListener("change", persistLocal);
+    selectUsuario.addEventListener("change", persistLocal);
+
+  </script>
+</body>
+</html>
