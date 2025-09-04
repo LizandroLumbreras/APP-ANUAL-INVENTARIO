@@ -175,7 +175,7 @@
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Precio</th><th>Importe</th><th>Fecha</th>
+           <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Costo</th><th>Importe</th><th>Fecha</th>
           </tr>
         </thead>
         <tbody id="tabla-productos"></tbody>
@@ -350,55 +350,67 @@
       return null;
     }
 
-    async function resolverProducto(codigoInput){
-      const codigoStr = String(codigoInput).trim();
+async function resolverProducto(codigoInput){
+  const codigoStr = String(codigoInput).trim();
 
-      // 1) Balanza
-      const detectado = detectarCodigoPeso(codigoStr);
-      if(detectado){
-        const eq = await buscarEnEquivalencias(detectado.base);
-        if(eq && eq.principal){
-          const d = eq.data || (await getProductoPorId(eq.principal));
-          if(d){
-            return {
-              descripcion: d.concepto ?? "Sin descripción",
-              codigo: eq.principal,
-              precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0),DEC_PRECIO),
-              cantidad: roundTo(detectado.pesoKg,DEC_CANTIDAD),
-              isPeso: true
-            };
-          }
-        }
+  // ¿código de balanza?
+  const detectado = detectarCodigoPeso(codigoStr);
+  if(detectado){
+    const eq = await buscarEnEquivalencias(detectado.base);
+    if(eq && eq.principal){
+      const d = eq.data || (await getProductoPorId(eq.principal));
+      if(d){
+        return {
+          descripcion: d.concepto ?? "Sin descripción",
+          codigo: eq.principal,
+          costo: Number(d.costo ?? 0),
+          cantidad: roundTo(detectado.pesoKg, DEC_CANTIDAD),
+          isPeso: true
+        };
       }
-
-      // 2) Cache
-      if(cacheProductos[codigoStr]) return cacheProductos[codigoStr];
-
-      // 3) Buscar por codigoBarra
-      let q = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",codigoStr), limit(1));
-      let snap = await getDocs(q);
-      if(!snap.empty){
-        const d = snap.docs[0].data();
-        return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id, precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0), DEC_PRECIO) };
-      }
-
-      // 4) Equivalentes
-      const eq = await buscarEnEquivalencias(codigoStr);
-      if(eq && eq.principal){
-        const d = eq.data || (await getProductoPorId(eq.principal));
-        if(d){
-          return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal, precio: roundTo(parseFloat(d.precioPublico ?? d.precio ?? 0), DEC_PRECIO) };
-        }
-      }
-
-      // 5) ID directo
-      const byId = await getProductoPorId(codigoStr);
-      if(byId){
-        return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id, precio: roundTo(parseFloat(byId.precioPublico ?? byId.precio ?? 0), DEC_PRECIO) };
-      }
-
-      throw new Error("Producto no encontrado");
     }
+  }
+
+  // cache
+  if(cacheProductos[codigoStr]) return cacheProductos[codigoStr];
+
+  // codigoBarra
+  let q = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",codigoStr), limit(1));
+  let snap = await getDocs(q);
+  if(!snap.empty){
+    const d = snap.docs[0].data();
+    return {
+      descripcion: d.concepto ?? "Sin desc",
+      codigo: snap.docs[0].id,
+      costo: Number(d.costo ?? 0)
+    };
+  }
+
+  // equivalentes
+  const eq = await buscarEnEquivalencias(codigoStr);
+  if(eq && eq.principal){
+    const d = eq.data || (await getProductoPorId(eq.principal));
+    if(d){
+      return {
+        descripcion: d.concepto ?? "Sin desc",
+        codigo: eq.principal,
+        costo: Number(d.costo ?? 0)
+      };
+    }
+  }
+
+  // id directo
+  const byId = await getProductoPorId(codigoStr);
+  if(byId){
+    return {
+      descripcion: byId.concepto ?? "Sin desc",
+      codigo: byId.id,
+      costo: Number(byId.costo ?? 0)
+    };
+  }
+
+  throw new Error("Producto no encontrado");
+}
 
     // ----------------- PREVISUALIZACIÓN -----------------
     async function previsualizar(){
@@ -407,12 +419,12 @@
 
       try{
         const p = await resolverProducto(codigo);
-        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, precio:p.precio, cantidad: p.cantidad, isPeso: !!p.isPeso };
+        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, costo: p.costo ?? 0, cantidad: p.cantidad, isPeso: !!p.isPeso };
 
         // Pintar UI
         pDesc.textContent = p.descripcion || "SIN DESCRIPCIÓN";
         pCodigo.textContent = `Código: ${p.codigo}`;
-        pPrecio.textContent = `Precio público: $${fmt(p.precio ?? 0, DEC_PRECIO)}`;
+        pPrecio.textContent = `Costo: $${fmt(p.costo ?? 0, DEC_PRECIO)}`;   // 👈 antes decía "Precio público"
         if(p.isPeso){
           pPeso.style.display = "inline-block";
           pPeso.textContent = `Peso detectado: ${fmt(p.cantidad, DEC_CANTIDAD)} kg`;
@@ -446,32 +458,36 @@
     inputCodigo.addEventListener("blur", ()=>{ if(inputCodigo.value.trim()) previsualizar(); });
 
     // ----------------- GUARDADO INMEDIATO -----------------
-    async function guardarRegistroInmediato(item){
-      if(!selectSucursal.value) throw new Error("Selecciona una sucursal");
-      if(!selectUsuario.value) throw new Error("Selecciona un usuario");
+async function guardarRegistroInmediato(item){
+  if(!selectSucursal.value) throw new Error("Selecciona una sucursal");
+  if(!selectUsuario.value) throw new Error("Selecciona un usuario");
 
-      const folioRegistro = generarFolio();
+  const folioRegistro = generarFolio();
+  const costo = Number(item.costo ?? 0);
 
-      const registro = {
-        folioSesion: folio,
-        folioRegistro,
-        fecha: new Date().toISOString(),
-        sucursal: selectSucursal.value,
-        usuario: selectUsuario.value,
-        palabraClave: inputClave.value.trim() || null,
-        ...item,
-        importe: roundTo((+item.cantidad||0) * (+item.precio||0), DEC_IMPORTE)
-      };
+  const registro = {
+    folioSesion: folio,
+    folioRegistro,
+    fecha: new Date().toISOString(),
+    sucursal: selectSucursal.value,
+    usuario: selectUsuario.value,
+    palabraClave: inputClave.value.trim() || null,
 
-await addDoc(
-  collection(db, "inventarios", selectSucursal.value, "usuarios", selectUsuario.value, "escaneos"),
-  registro
-);
+    descripcion: item.descripcion,
+    codigo: item.codigo,
+    cantidad: Number(item.cantidad || 0),
+    costo,                                        // 👈 guardamos costo
+    importe: roundTo((+item.cantidad||0) * costo, DEC_IMPORTE)
+  };
 
+  await addDoc(
+    collection(db,"inventarios", selectSucursal.value, "usuarios", selectUsuario.value, "escaneos"),
+    registro
+  );
 
-      ultimoRegistro = registro;
-      renderTablaUltimo();
-    }
+  ultimoRegistro = registro;
+  renderTablaUltimo();
+}
 
     function renderTablaUltimo(){
       tabla.innerHTML = "";
@@ -487,7 +503,7 @@ await addDoc(
         <td>${p.descripcion}</td>
         <td>${p.codigo}</td>
         <td>${fmt(p.cantidad, DEC_CANTIDAD)}</td>
-        <td>$${fmt(p.precio, DEC_PRECIO)}</td>
+       <td>$${fmt(p.costo, DEC_PRECIO)}</td>
         <td>$${fmt(p.importe, DEC_IMPORTE)}</td>
         <td>${(p.fecha||"").slice(0,19).replace('T',' ')}</td>
       `;
@@ -516,12 +532,13 @@ await addDoc(
         let cantidad = roundTo(parseFloat(inputCantidad.value|| (p.cantidad ?? "1")), DEC_CANTIDAD);
         if(isNaN(cantidad) || cantidad<=0) throw new Error("Cantidad inválida");
 
-        await guardarRegistroInmediato({
-          descripcion: p.descripcion,
-          codigo: p.codigo,
-          precio: p.precio ?? 0,
-          cantidad
-        });
+await guardarRegistroInmediato({
+  descripcion: p.descripcion,
+  codigo: p.codigo,
+  costo: Number(p.costo ?? 0),
+  cantidad
+});
+
 
         // limpiar para el siguiente
         inputCodigo.value = "";
@@ -540,17 +557,16 @@ await addDoc(
     });
 
     function exportarAExcel(lista,folioReg,sucursal){
-      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","FolioRegistro","Sucursal","Usuario"]];
-      const datos=lista.map((p,i)=>[
-        i+1,p.descripcion,p.codigo,
-        fmt(p.cantidad,DEC_CANTIDAD),
-        fmt(p.precio,DEC_PRECIO),
-        fmt(p.importe,DEC_IMPORTE),
-        (p.fecha||"").slice(0,19).replace('T',' '),
-        p.folioRegistro,
-        p.sucursal || "",
-        p.usuario || ""
-      ]);
+const encabezados=[["#","Descripción","Código","Cantidad","Costo","Importe","Fecha","FolioRegistro","Sucursal","Usuario"]];
+const datos=lista.map((p,i)=>[
+  i+1,p.descripcion,p.codigo,
+  fmt(p.cantidad,DEC_CANTIDAD),
+  fmt(p.costo,DEC_PRECIO),
+  fmt(p.importe,DEC_IMPORTE),
+  (p.fecha||"").slice(0,19).replace('T',' '),
+  p.folioRegistro, p.sucursal||"", p.usuario||""
+]);
+
       const wb=XLSX.utils.book_new();
       const ws=XLSX.utils.aoa_to_sheet(encabezados.concat(datos));
       XLSX.utils.book_append_sheet(wb,ws,"Último");
@@ -602,7 +618,7 @@ await addDoc(
         }
 
         if(!s1.empty){
-          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), coincidencia:encontradoEn, codigoBuscado:termino }));
+          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), costo: Number(d.data().costo ?? 0), coincidencia:encontradoEn, codigoBuscado:termino }));
         }else{
           resultadosDiv.innerHTML = "❌ No se encontró este código en productos ni en equivalentes";
           contador.textContent = "";
@@ -673,17 +689,19 @@ await addDoc(
         `;
 
         // En buscador, no guarda directo: pasa a previsualización y cierra modal
-        div.querySelector(".btn-ok").addEventListener("click", ()=>{
-          productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id, precio: precioPublico??0 };
-          pDesc.textContent = productoPreview.descripcion;
-          pCodigo.textContent = `Código: ${productoPreview.codigo}`;
-          pPrecio.textContent = `Precio público: $${fmt(productoPreview.precio, DEC_PRECIO)}`;
-          pPeso.style.display = "none";
-          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
-          previewBox.style.display = "block";
-          cerrarModal();
-          inputCantidad.focus();
-        });
+div.querySelector(".btn-ok").addEventListener("click", ()=>{
+  const costo = Number(p.costo ?? 0);
+  productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id, costo };
+  pDesc.textContent = productoPreview.descripcion;
+  pCodigo.textContent = `Código: ${productoPreview.codigo}`;
+  pPrecio.textContent = `Costo: $${fmt(costo, DEC_PRECIO)}`;
+  pPeso.style.display = "none";
+  pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
+  previewBox.style.display = "block";
+  cerrarModal();
+  inputCantidad.focus();
+});
+
 
         resultadosDiv.appendChild(div);
       });
