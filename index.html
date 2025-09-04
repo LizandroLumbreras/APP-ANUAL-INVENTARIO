@@ -243,6 +243,10 @@ tbody td:nth-child(5), tbody td:nth-child(6), tbody td:nth-child(7){display:none
     const db = getFirestore(app);
 
     // ----------------- Utilidades -----------------
+    const pad2 = (n) => String(n).padStart(2,'0');
+const fechaLocal = (d = new Date()) =>
+  `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ` +
+  `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
     const roundTo = (num, dec) => Math.round((Number(num) + Number.EPSILON) * 10**dec) / 10**dec;
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
@@ -469,7 +473,8 @@ async function guardarRegistroInmediato(item){
   const registro = {
     folioSesion: folio,
     folioRegistro,
-    fecha: new Date().toISOString(),
+    fecha: fechaLocal(),            // hora local del sistema
+    epochMs: Date.now(),            // (opcional) por si luego quieres ordenar por tiempo
     sucursal: selectSucursal.value,
     usuario: selectUsuario.value,
     palabraClave: inputClave.value.trim() || null,
@@ -506,7 +511,7 @@ async function guardarRegistroInmediato(item){
         <td>${fmt(p.cantidad, DEC_CANTIDAD)}</td>
        <td>$${fmt(p.costo, DEC_PRECIO)}</td>
         <td>$${fmt(p.importe, DEC_IMPORTE)}</td>
-        <td>${(p.fecha||"").slice(0,19).replace('T',' ')}</td>
+        <td>${p.fecha || ""}</td>
       `;
       tabla.appendChild(tr);
       tRenglones.textContent = "1";
@@ -564,7 +569,7 @@ const datos=lista.map((p,i)=>[
   fmt(p.cantidad,DEC_CANTIDAD),
   fmt(p.costo,DEC_PRECIO),
   fmt(p.importe,DEC_IMPORTE),
-  (p.fecha||"").slice(0,19).replace('T',' '),
+  p.fecha || "",
   p.folioRegistro, p.sucursal||"", p.usuario||""
 ]);
 
