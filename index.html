@@ -250,7 +250,13 @@ const fechaLocal = (d = new Date()) =>
     const roundTo = (num, dec) => Math.round((Number(num) + Number.EPSILON) * 10**dec) / 10**dec;
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
-
+    const obtenerCosto = (d) => Number(
+  d?.costoSinImpuesto ??
+  d?.costoSinImpuestos ??   // por si algún doc trae plural
+  d?.costo_sin_impuesto ??  // por si hay variantes
+  d?.costo ??               // fallback
+  0
+);
     const inputClave = $("palabraClave");
     const inputCodigo = $("codigo");
     const inputCantidad = $("cantidad");
@@ -368,7 +374,7 @@ async function resolverProducto(codigoInput){
         return {
           descripcion: d.concepto ?? "Sin descripción",
           codigo: eq.principal,
-          costo: Number(d.costo ?? 0),
+         costo: obtenerCosto(d),
           cantidad: roundTo(detectado.pesoKg, DEC_CANTIDAD),
           isPeso: true
         };
@@ -384,11 +390,7 @@ async function resolverProducto(codigoInput){
   let snap = await getDocs(q);
   if(!snap.empty){
     const d = snap.docs[0].data();
-    return {
-      descripcion: d.concepto ?? "Sin desc",
-      codigo: snap.docs[0].id,
-      costo: Number(d.costo ?? 0)
-    };
+    return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id, costo: obtenerCosto(d) };
   }
 
   // equivalentes
@@ -396,22 +398,14 @@ async function resolverProducto(codigoInput){
   if(eq && eq.principal){
     const d = eq.data || (await getProductoPorId(eq.principal));
     if(d){
-      return {
-        descripcion: d.concepto ?? "Sin desc",
-        codigo: eq.principal,
-        costo: Number(d.costo ?? 0)
-      };
+     return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal, costo: obtenerCosto(d) };
     }
   }
 
   // id directo
   const byId = await getProductoPorId(codigoStr);
   if(byId){
-    return {
-      descripcion: byId.concepto ?? "Sin desc",
-      codigo: byId.id,
-      costo: Number(byId.costo ?? 0)
-    };
+    return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id, costo: obtenerCosto(byId) };
   }
 
   throw new Error("Producto no encontrado");
@@ -424,7 +418,7 @@ async function resolverProducto(codigoInput){
 
       try{
         const p = await resolverProducto(codigo);
-        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, costo: p.costo ?? 0, cantidad: p.cantidad, isPeso: !!p.isPeso };
+        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, costo: Number(p.costo ?? 0), cantidad: p.cantidad, isPeso: !!p.isPeso };
 
         // Pintar UI
         pDesc.textContent = p.descripcion || "SIN DESCRIPCIÓN";
@@ -624,7 +618,7 @@ const datos=lista.map((p,i)=>[
         }
 
         if(!s1.empty){
-          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), costo: Number(d.data().costo ?? 0), coincidencia:encontradoEn, codigoBuscado:termino }));
+          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), costo: obtenerCosto(d.data()), coincidencia:encontradoEn, codigoBuscado:termino }));
         }else{
           resultadosDiv.innerHTML = "❌ No se encontró este código en productos ni en equivalentes";
           contador.textContent = "";
@@ -696,7 +690,7 @@ const datos=lista.map((p,i)=>[
 
         // En buscador, no guarda directo: pasa a previsualización y cierra modal
 div.querySelector(".btn-ok").addEventListener("click", ()=>{
-  const costo = Number(p.costo ?? 0);
+  const costo = obtenerCosto(p);
   productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id, costo };
   pDesc.textContent = productoPreview.descripcion;
   pCodigo.textContent = `Código: ${productoPreview.codigo}`;
