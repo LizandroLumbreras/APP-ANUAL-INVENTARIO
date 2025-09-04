@@ -218,11 +218,6 @@
 
     <div id="lector" style="display:none; background:#fff; padding:10px; border-radius:8px; width:min(420px,92vw)"></div>
 
-    <div class="fila sec">
-      <button class="boton" id="exportar-actual">📥 Descargar Excel (último)</button>
-      <button class="btn-danger" id="limpiar">🧹 Limpiar (solo limpia la vista)</button>
-    </div>
-
     <div class="contenedor-tabla">
       <table>
         <thead>
@@ -323,8 +318,6 @@
     const selectUsuario = $("usuario");
     const selectSucursal = $("sucursal");
     const btnAgregar = $("agregar");
-    const exportarActBtn = $("exportar-actual");
-    const limpiarBtn = $("limpiar");
     const folioSpan = $("folio");
     const tabla = $("tabla-productos");
     const tRenglones = $("tRenglones");
@@ -622,36 +615,6 @@
     $("agregar").addEventListener("click", agregarYGuardar);
     inputCantidad.addEventListener("keydown", e=>{
       if(e.key==="Enter"){ e.preventDefault(); agregarYGuardar(); }
-    });
-
-    // ----------------- Botones Exportar / Limpiar -----------------
-    exportarActBtn.addEventListener("click", ()=>{
-      if(!ultimoRegistro) return alert("No hay registro reciente para exportar");
-      exportarAExcel([ultimoRegistro], ultimoRegistro.folioRegistro, ultimoRegistro.sucursal);
-    });
-
-    function exportarAExcel(lista,folioReg,sucursal){
-      const encabezados=[["#","Descripción","Código","Cantidad","Costo","Importe","Fecha","FolioRegistro","Sucursal","Usuario"]];
-      const datos=lista.map((p,i)=>[
-        i+1,p.descripcion,p.codigo,
-        fmt(p.cantidad,DEC_CANTIDAD),
-        fmt(p.costo,DEC_PRECIO),
-        fmt(p.importe,DEC_IMPORTE),
-        p.fecha || "",
-        p.folioRegistro, p.sucursal||"", p.usuario||""
-      ]);
-
-      const wb=XLSX.utils.book_new();
-      const ws=XLSX.utils.aoa_to_sheet(encabezados.concat(datos));
-      XLSX.utils.book_append_sheet(wb,ws,"Último");
-      const suf = sucursal ? `_${sucursal.replace(/\s+/g,'_')}` : "";
-      XLSX.writeFile(wb,`InventarioUltimo_${folioReg}${suf}.xlsx`);
-    }
-
-    limpiarBtn.addEventListener("click", ()=>{
-      ultimoRegistro = null;
-      renderTablaUltimo();
-      ocultarPreview();
     });
 
     // ----------------- Buscador (modal) -----------------
