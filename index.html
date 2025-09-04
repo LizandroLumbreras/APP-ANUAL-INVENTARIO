@@ -98,9 +98,24 @@
       <span class="chip" id="chipModo">Modo: Acumular</span>
     </div>
 
+    <!-- Palabra clave + Sucursal + Usuario -->
     <div class="fila sec">
       <label for="palabraClave" style="min-width:140px">Palabra clave:</label>
       <input type="text" id="palabraClave" placeholder="Ej. BODEGA, URGENTE, PROV">
+
+      <label for="sucursal" style="min-width:100px">Sucursal:</label>
+      <select id="sucursal">
+        <option value="">-- Selecciona sucursal --</option>
+        <option>osito</option>
+        <option>provileon</option>
+        <option>central</option>
+        <option>matriz</option>
+        <option>bodega saul</option>
+        <option>bodega abarrotes</option>
+        <option>bodega dulces</option>
+        <option>zapata</option>
+      </select>
+
       <label for="usuario" style="min-width:100px">Usuario:</label>
       <select id="usuario">
         <option value="">-- Selecciona usuario --</option>
@@ -215,6 +230,7 @@
     const inputCodigo = $("codigo");
     const inputCantidad = $("cantidad");
     const selectUsuario = $("usuario");
+    const selectSucursal = $("sucursal");
     const btnAgregar = $("agregar");
     const exportarActBtn = $("exportar-actual");
     const limpiarBtn = $("limpiar");
@@ -252,7 +268,7 @@
     const modoAcumular = true;
     chipModo.textContent = "Modo: Acumular";
 
-    // Pila de deshacer (se mantiene por si luego la reactivas, pero sin botón)
+    // Pila de deshacer (sin botones)
     let undoStack = [];
 
     // buscador
@@ -260,9 +276,12 @@
     let pagina = 0;
     const porPagina = 20;
 
-    // Cargar estado
+    // Cargar estado (incluye sucursal)
     const usuarioPrevio = localStorage.getItem("usuarioInventarioAnuales") || "";
+    const sucursalPrev = localStorage.getItem("sucursalInventarioAnuales") || "";
     if (usuarioPrevio) selectUsuario.value = usuarioPrevio;
+    if (sucursalPrev) selectSucursal.value = sucursalPrev;
+
     folioSpan.textContent = folio;
     inputClave.value = palabraClaveGuardada;
     actualizarTabla();
@@ -370,7 +389,7 @@
       try{
         const p=await buscarProductoPorCodigo(codigo);
         if(p.cantidad) cantidad=p.cantidad;
-        pushUndo(); // guardo snapshot por si luego reactivas “Deshacer”
+        pushUndo();
         upsertRenglon(p.codigo, p.descripcion, p.precio, cantidad);
         actualizarTabla();
         inputCodigo.value="";inputCantidad.value="1.000";inputCodigo.focus();
@@ -382,7 +401,6 @@
       const nowISO = new Date().toISOString();
 
       if(idx!==-1){
-        // Modo fijo: ACUMULAR
         articulosEscaneados[idx].cantidad = roundTo(Number(articulosEscaneados[idx].cantidad)+cantidad,DEC_CANTIDAD);
         articulosEscaneados[idx].precio = roundTo(precio ?? 0, DEC_PRECIO);
         articulosEscaneados[idx].timestamp = nowISO;
@@ -451,7 +469,7 @@
       localStorage.setItem("folioInventarioAnuales", folio);
       localStorage.setItem("claveInventarioAnuales", inputClave.value.trim());
       localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
-      // (ya no guardamos modo)
+      localStorage.setItem("sucursalInventarioAnuales", selectSucursal.value);
     }
 
     // ----------------- Deshacer (sin UI) -----------------
@@ -463,23 +481,30 @@
     // ----------------- Guardado Firestore -----------------
     guardarBtn.addEventListener("click", async ()=>{
       if(!articulosEscaneados.length) return alert("No hay artículos");
+      if(!selectSucursal.value) return alert("Selecciona una sucursal");
       if(!selectUsuario.value) return alert("Selecciona un usuario");
+
       folio=generarFolio(); folioSpan.textContent=folio;
 
       const grupo={
         folio,
         fecha:new Date().toISOString(),
+        sucursal: selectSucursal.value,
+        usuario: selectUsuario.value,
+        palabraClave: inputClave.value.trim()||null,
         articulos:articulosEscaneados,
         totalArticulos:articulosEscaneados.length,
         sumaCantidades:articulosEscaneados.reduce((a,b)=>a+(+b.cantidad||0),0),
-        sumaImporte:roundTo(articulosEscaneados.reduce((a,b)=>a+((+b.cantidad||0)*(+b.precio||0)),0),DEC_IMPORTE),
-        palabraClave:inputClave.value.trim()||null,
-        usuario:selectUsuario.value
+        sumaImporte:roundTo(articulosEscaneados.reduce((a,b)=>a+((+b.cantidad||0)*(+b.precio||0)),0),DEC_IMPORTE)
       };
 
       try{
-        await addDoc(collection(db,"inventarios",selectUsuario.value,"escaneos"),grupo);
-        alert(`✅ Guardado folio ${folio}`);
+        // inventarios/{sucursal}/{usuario}/escaneos
+        await addDoc(
+          collection(db,"inventarios", selectSucursal.value, selectUsuario.value, "escaneos"),
+          grupo
+        );
+        alert(`✅ Guardado folio ${folio} en sucursal: ${selectSucursal.value}`);
         pushUndo();
         articulosEscaneados=[];
         actualizarTabla();
@@ -492,22 +517,25 @@
     // ----------------- Excel -----------------
     exportarActBtn.addEventListener("click", ()=>{
       if(!articulosEscaneados.length) return alert("No hay artículos");
-      exportarAExcel(articulosEscaneados,folio);
+      exportarAExcel(articulosEscaneados,folio, selectSucursal.value);
     });
 
-    function exportarAExcel(lista,folio){
-      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","Folio"]];
+    function exportarAExcel(lista,folio,sucursal){
+      const encabezados=[["#","Descripción","Código","Cantidad","Precio","Importe","Fecha","Folio","Sucursal"]];
       const datos=lista.map((p,i)=>[
         i+1,p.descripcion,p.codigo,
         fmt(p.cantidad,DEC_CANTIDAD),
         fmt(p.precio,DEC_PRECIO),
         fmt((Number(p.cantidad)||0)*(Number(p.precio)||0),DEC_IMPORTE),
-        (p.timestamp||"").slice(0,19).replace('T',' '),folio
+        (p.timestamp||"").slice(0,19).replace('T',' '),
+        folio,
+        sucursal || ""
       ]);
       const wb=XLSX.utils.book_new();
       const ws=XLSX.utils.aoa_to_sheet(encabezados.concat(datos));
       XLSX.utils.book_append_sheet(wb,ws,"Inventario");
-      XLSX.writeFile(wb,`Inventario_${folio}.xlsx`);
+      const suf = sucursal ? `_${sucursal.replace(/\s+/g,'_')}` : "";
+      XLSX.writeFile(wb,`Inventario_${folio}${suf}.xlsx`);
     }
 
     limpiarBtn.addEventListener("click", ()=>{
@@ -682,6 +710,7 @@
     // ----------------- Autosave de campos -----------------
     inputClave.addEventListener("change", persistLocal);
     selectUsuario.addEventListener("change", persistLocal);
+    selectSucursal.addEventListener("change", persistLocal);
 
   </script>
 </body>
