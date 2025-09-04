@@ -120,6 +120,8 @@
         <option>bodega abarrotes</option>
         <option>bodega dulces</option>
         <option>zapata</option>
+        <option>allende</option>
+        <option>allende 2</option>
       </select>
 
       <label for="usuario" style="min-width:100px">Usuario:</label>
@@ -461,10 +463,11 @@
         importe: roundTo((+item.cantidad||0) * (+item.precio||0), DEC_IMPORTE)
       };
 
-      await addDoc(
-        collection(db,"inventarios", selectSucursal.value, selectUsuario.value, "escaneos"),
-        registro
-      );
+await addDoc(
+  collection(db, "inventarios", selectSucursal.value, "usuarios", selectUsuario.value, "escaneos"),
+  registro
+);
+
 
       ultimoRegistro = registro;
       renderTablaUltimo();
