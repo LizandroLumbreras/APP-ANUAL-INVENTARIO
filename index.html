@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>INVENTARIOS ANUALES PROVEEDORA</title>
 
-  <!-- Fuente + escáner -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -25,6 +24,7 @@
       color:white; padding:16px; margin:0;
     }
     h1{ text-align:center; margin:6px 0 12px }
+
     .fila{ display:flex; flex-wrap:wrap; gap:10px; align-items:center }
     .folio-box{ background:white; color:#00416A; font-weight:700; padding:6px 12px; border-radius:8px; display:inline-block }
     input,button,select{ font-family:inherit; padding:12px; font-size:16px; border-radius:10px; border:none }
@@ -38,27 +38,20 @@
     .boton:active{ filter:brightness(.9) }
     .btn-ghost{ background:#e8edf6; color:#0c2a5e; font-weight:600; border-radius:12px }
     .sec{ margin-top:12px }
+
     .contenedor-tabla{ background:var(--card); color:#111; border-radius:12px; overflow:hidden; margin-top:14px }
     table{ width:100%; border-collapse:collapse; min-width:760px }
     th,td{ padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; vertical-align:middle }
     th{ background-color:#00416A; color:white; position:sticky; top:0; z-index:1; text-align:center }
     td{ text-align:center }
-    .resumen{
-      background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
-      border-radius:12px; padding:10px; display:flex; gap:16px; flex-wrap:wrap
-    }
+    .resumen{ background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:12px; padding:10px; display:flex; gap:16px; flex-wrap:wrap }
     .chip{ background:white; color:#00416A; border-radius:100px; padding:4px 10px; font-size:12px; font-weight:600 }
     .muted{opacity:.9}
 
     /* Vistas */
     .view{ display:none }
     .view.active{ display:block; }
-    .topbar{
-      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-      margin:8px 0 12px;
-    }
-    .topbar .info{ display:flex; gap:10px; flex-wrap:wrap; align-items:center }
-    .pill{ background:#ffffff; color:#0c2a5e; font-weight:700; border-radius:999px; padding:6px 10px }
+    .topbar{ display:flex; gap:10px; align-items:center; justify-content:flex-start; margin:8px 0 12px; }
 
     /* Modal buscador */
     .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:10px }
@@ -81,11 +74,7 @@
 
     /* Watermark */
     .wm-logo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
-    .wm-logo img{
-      position:absolute; top:50%; left:50%; transform: translate(-50%, -50%) rotate(var(--wm-rotate));
-      width: var(--wm-size); height:auto; opacity: var(--wm-opacity); mix-blend-mode: var(--wm-blend);
-      filter: grayscale(20%) saturate(120%) contrast(105%);
-    }
+    .wm-logo img{ position:absolute; top:50%; left:50%; transform: translate(-50%, -50%) rotate(var(--wm-rotate)); width: var(--wm-size); height:auto; opacity: var(--wm-opacity); mix-blend-mode: var(--wm-blend); filter: grayscale(20%) saturate(120%) contrast(105%); }
     main{ position:relative; z-index:1; max-width:980px; margin:0 auto; }
 
     /* ====== MOBILE ====== */
@@ -95,21 +84,15 @@
       .fila{ gap:8px }
       label{ width:100%; font-size:14px; opacity:.95 }
       input[type="text"], input[type="number"], select{ max-width:none; width:100% }
-      .boton, .btn-ghost{ width:100% }
-      .qty{ max-width:none; width:100% }
-
-      /* Tabla -> Cards */
       .contenedor-tabla{ border-radius:12px; overflow:hidden }
+      /* Tabla -> Cards */
       table{ border:0; min-width:0 } thead{ display:none }
-      tbody tr{
-        display:block; background:#fff; margin:10px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;
-        box-shadow:0 4px 10px rgba(0,0,0,.06);
-      }
+      tbody tr{ display:block; background:#fff; margin:10px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; box-shadow:0 4px 10px rgba(0,0,0,.06); }
       tbody td{ display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:left !important; }
       tbody td::before{ content: attr(data-label); font-weight:700; color:#0c2a5e; margin-right:12px; }
       tbody td:last-child{ border-bottom:0 }
 
-      /* Dock de acciones rápidas en CAPTURA */
+      /* Dock (solo en captura) */
       .dock{
         position:fixed; left:0; right:0; bottom:0; z-index:60;
         padding:8px 10px env(safe-area-inset-bottom);
@@ -128,6 +111,7 @@
 </head>
 <body>
   <div class="wm-logo"><img src="logo-proveedora.webp" alt=""></div>
+
   <main>
     <h1>INVENTARIOS ANUALES PROVEEDORA</h1>
 
@@ -164,20 +148,13 @@
     <!-- ===== Pantalla 2: Captura ===== -->
     <section id="view-captura" class="view">
       <div class="topbar">
-        <div class="info">
-          <span class="pill" id="resumeFolio"></span>
-          <span class="pill" id="resumeSucursal"></span>
-          <span class="pill" id="resumeUsuario"></span>
-        </div>
         <button class="btn-ghost" id="btnVolver">⬅ Volver</button>
       </div>
 
       <div class="fila sec">
         <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric">
         <input type="number" id="cantidad" class="qty" placeholder="Cantidad" step="0.001" min="0.001" inputmode="decimal">
-        <button class="boton" id="agregar">➕ Agregar (guardar)</button>
-        <button class="boton" id="abrirBuscador">🔎 Buscar</button>
-        <button class="boton" id="scanBtn">📷 Escanear</button>
+        <!-- SIN botones aquí; solo dock inferior -->
       </div>
 
       <!-- Previsualización -->
@@ -207,7 +184,7 @@
         <div><b>Cantidad (último):</b> <span id="tCantidad">0.000</span></div>
       </div>
 
-      <!-- Dock móvil (solo en captura) -->
+      <!-- Dock móvil (únicos botones de acción) -->
       <div class="dock" id="dock" style="display:none">
         <div class="row">
           <button class="btn-ghost" id="dockBuscar">🔎 Buscar</button>
@@ -249,7 +226,7 @@
   </footer>
 
   <script type="module">
-    /* ==================== Firebase ==================== */
+    /* ========== Firebase ========== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, getDoc, query, where, doc, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -265,7 +242,7 @@
     const db  = getFirestore(app);
     const DEC_CANTIDAD = 3;
 
-    /* ==================== Utils ==================== */
+    /* ========== Utils ========== */
     const pad2 = (n) => String(n).padStart(2,'0');
     const fechaLocal = (d = new Date()) =>
       `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
@@ -273,7 +250,7 @@
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
 
-    // Folio único (con sufijo aleatorio)
+    // Folio único (con sufijo aleatorio) para evitar duplicados entre usuarios
     function generarFolio() {
       const d = new Date(), P=n=>String(n).padStart(2,'0');
       const ymd = `${d.getFullYear()}${P(d.getMonth()+1)}${P(d.getDate())}-${P(d.getHours())}${P(d.getMinutes())}${P(d.getSeconds())}`;
@@ -292,33 +269,28 @@
       }catch(e){}
     }
 
-    /* ==================== Refs ==================== */
-    const folioSpan     = $("folio");
-    const chipModo      = $("chipModo");
-    const selectSucursal= $("sucursal");
-    const selectUsuario = $("usuario");
-    const btnContinuar  = $("btnContinuar");
-    const btnVolver     = $("btnVolver");
-    const viewSetup     = $("view-setup");
-    const viewCaptura   = $("view-captura");
-    const resumeFolio   = $("resumeFolio");
-    const resumeSucursal= $("resumeSucursal");
-    const resumeUsuario = $("resumeUsuario");
+    /* ========== Refs ========== */
+    const folioSpan = $("folio");
+    const chipModo  = $("chipModo");
+    const selectSucursal = $("sucursal");
+    const selectUsuario  = $("usuario");
+    const btnContinuar   = $("btnContinuar");
+    const btnVolver      = $("btnVolver");
+    const viewSetup      = $("view-setup");
+    const viewCaptura    = $("view-captura");
 
-    const inputCodigo   = $("codigo");
-    const inputCantidad = $("cantidad");
-    const btnAgregar    = $("agregar");
-    const abrirBuscadorBtn = $("abrirBuscador");
-    const scanBtn       = $("scanBtn");
+    const inputCodigo    = $("codigo");
+    const inputCantidad  = $("cantidad");
 
     const previewBox = $("preview"); const pDesc=$("pDesc"); const pCodigo=$("pCodigo"); const pPeso=$("pPeso"); const pAviso=$("pAviso");
     const tabla = $("tabla-productos"); const tRenglones=$("tRenglones"); const tCantidad=$("tCantidad");
+
     const modal=$("modal"); const cerrarModalBtn=$("cerrarModal"); const inputBuscador=$("buscador"); const resultadosDiv=$("resultados");
     const barraProgreso=$("barraProgreso"); const estado=$("estado"); const contador=$("contador"); const btnPrev=$("prev"); const btnNext=$("next");
 
     const divLector=$("lector"); const dock=$("dock"); const dockAdd=$("dockAdd"); const dockScan=$("dockScan"); const dockBuscar=$("dockBuscar");
 
-    /* ==================== Estado ==================== */
+    /* ========== Estado & persistencia ========== */
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
     folioSpan.textContent = folio; chipModo.textContent = "Modo: Acumular";
     const usuarioPrevio = localStorage.getItem("usuarioInventarioAnuales") || "";
@@ -336,24 +308,18 @@
     selectUsuario.addEventListener("change", persistLocal);
     selectSucursal.addEventListener("change", persistLocal);
 
-    /* ===== Navegación entre pantallas ===== */
+    /* ===== Navegación ===== */
     function setView(which){
       viewSetup.classList.toggle("active", which==="setup");
       viewCaptura.classList.toggle("active", which==="captura");
-      // dock solo en captura y en móvil
+      // dock solo en captura y móvil
       const showDock = which==="captura" && window.matchMedia("(max-width: 640px)").matches;
       dock.style.display = showDock ? "block" : "none";
-    }
-    function actualizarResumen(){
-      resumeFolio.textContent = folio;
-      resumeSucursal.textContent = `Sucursal: ${selectSucursal.value || "-"}`;
-      resumeUsuario.textContent = `Usuario: ${selectUsuario.value || "-"}`;
     }
     btnContinuar.addEventListener("click", ()=>{
       if(!selectSucursal.value) return alert("Selecciona una sucursal");
       if(!selectUsuario.value) return alert("Selecciona un usuario");
       persistLocal();
-      actualizarResumen();
       setView("captura");
       setTimeout(()=>inputCodigo.focus(), 100);
     });
@@ -361,10 +327,9 @@
       if(lector){ try{ await lector.stop(); }catch{} lector=null; divLector.style.display="none"; }
       setView("setup");
     });
-    // Ajusta dock al redimensionar
     window.addEventListener("resize", ()=> setView(viewCaptura.classList.contains("active") ? "captura" : "setup"));
 
-    /* ==================== Lógica de productos ==================== */
+    /* ===== Lógica de productos ===== */
     function detectarCodigoPeso(codigoStr){
       if(/^\d{13}$/.test(codigoStr) && codigoStr.startsWith("20")){
         const base = codigoStr.substring(0,7);
@@ -373,8 +338,8 @@
       }
       return null;
     }
-    async function buscarEnEquivalencias(codigoInput){
-      const q = query(collection(db,"productos"), where("codigosEquivalentes","array-contains",String(codigoInput).trim()));
+    async function buscarEnEquivalencias(code){
+      const q = query(collection(db,"productos"), where("codigosEquivalentes","array-contains",String(code).trim()));
       const snap = await getDocs(q);
       if(!snap.empty){ const docu=snap.docs[0]; return {principal: docu.id, data: docu.data()}; }
       return null;
@@ -489,13 +454,10 @@
         inputCodigo.value=""; inputCantidad.value=""; ocultarPreview(); inputCodigo.focus();
       }catch(e){ alert(e.message || "Error al guardar"); }
     };
-    btnAgregar.addEventListener("click", agregarYGuardar);
-    inputCantidad.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); agregarYGuardar(); } });
 
-    /* ==================== Buscador ==================== */
+    /* ===== Buscador ===== */
     function abrirModal(){ modal.style.display="flex"; inputBuscador.focus(); }
     function cerrarModal(){ modal.style.display="none"; resultadosDiv.innerHTML=""; contador.textContent=""; estado.textContent=""; barraProgreso.value=0; }
-    abrirBuscadorBtn.addEventListener("click", abrirModal);
     cerrarModalBtn.addEventListener("click", cerrarModal);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
 
@@ -561,12 +523,8 @@
       btnPrev.disabled=pagina===0; btnNext.disabled=fin>=resultados.length;
     }
 
-    /* ==================== Escáner ==================== */
+    /* ===== Escáner ===== */
     let lector=null;
-    function mostrarDockSiToca(){ setView(viewCaptura.classList.contains("active")?"captura":"setup"); }
-    scanBtn.addEventListener("click", startStopCam);
-    dockScan.addEventListener("click", startStopCam);
-
     async function startStopCam(){
       if(lector){ try{ await lector.stop(); }catch{} lector=null; divLector.style.display="none"; return; }
       divLector.style.display="block";
@@ -587,11 +545,12 @@
       }catch(e){ console.error("Error cámara:", e); alert("No se pudo abrir la cámara"); }
     }
 
-    /* ==================== Dock acciones ==================== */
-    dockAdd.addEventListener("click", ()=> btnAgregar.click());
-    dockBuscar.addEventListener("click", ()=> abrirModal());
+    /* ===== Dock acciones ===== */
+    dockAdd.addEventListener("click", agregarYGuardar);
+    dockBuscar.addEventListener("click", abrirModal);
+    dockScan.addEventListener("click", startStopCam);
 
-    // Inicia en pantalla de configuración
+    // Inicia en configuración
     setView("setup");
   </script>
 </body>
