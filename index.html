@@ -51,7 +51,6 @@
     /* Vistas */
     .view{ display:none }
     .view.active{ display:block; }
-    .topbar{ display:flex; gap:10px; align-items:center; justify-content:flex-start; margin:8px 0 12px; }
 
     /* Modal buscador */
     .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:10px }
@@ -92,19 +91,19 @@
       tbody td::before{ content: attr(data-label); font-weight:700; color:#0c2a5e; margin-right:12px; }
       tbody td:last-child{ border-bottom:0 }
 
-      /* Dock (solo en captura) */
+      /* Dock (captura) */
       .dock{
         position:fixed; left:0; right:0; bottom:0; z-index:60;
         padding:8px 10px env(safe-area-inset-bottom);
         background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,38,73,.25) 20%, rgba(0,65,106,.65) 100%);
         backdrop-filter: blur(8px);
       }
-      .dock .row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px }
+      .dock .row{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px }
       .dock .row button{ padding:12px 10px; border-radius:14px; font-weight:800; font-size:15px }
     }
     @media (max-width: 380px){
       .dock .row{ grid-template-columns:1fr 1fr; }
-      .dock .row button[data-role="add"]{ grid-column:1 / -1 }
+      .dock .row button[data-role="add"]{ grid-column:1 / -1 } /* Agregar ocupa toda la fila */
     }
     @media print{ .wm-logo{ display:none } .modal{ display:none !important } .dock{ display:none !important } }
   </style>
@@ -147,14 +146,9 @@
 
     <!-- ===== Pantalla 2: Captura ===== -->
     <section id="view-captura" class="view">
-      <div class="topbar">
-        <button class="btn-ghost" id="btnVolver">⬅ Volver</button>
-      </div>
-
       <div class="fila sec">
         <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric">
         <input type="number" id="cantidad" class="qty" placeholder="Cantidad" step="0.001" min="0.001" inputmode="decimal">
-        <!-- SIN botones aquí; solo dock inferior -->
       </div>
 
       <!-- Previsualización -->
@@ -184,9 +178,10 @@
         <div><b>Cantidad (último):</b> <span id="tCantidad">0.000</span></div>
       </div>
 
-      <!-- Dock móvil (únicos botones de acción) -->
+      <!-- Dock inferior (con Volver) -->
       <div class="dock" id="dock" style="display:none">
         <div class="row">
+          <button class="btn-ghost" id="dockBack">⬅ Volver</button>
           <button class="btn-ghost" id="dockBuscar">🔎 Buscar</button>
           <button class="btn-ghost" id="dockScan">📷 Escanear</button>
           <button class="boton" data-role="add" id="dockAdd">➕ Agregar</button>
@@ -250,7 +245,6 @@
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
 
-    // Folio único (con sufijo aleatorio) para evitar duplicados entre usuarios
     function generarFolio() {
       const d = new Date(), P=n=>String(n).padStart(2,'0');
       const ymd = `${d.getFullYear()}${P(d.getMonth()+1)}${P(d.getDate())}-${P(d.getHours())}${P(d.getMinutes())}${P(d.getSeconds())}`;
@@ -258,7 +252,6 @@
       return `AnualesPDD-${ymd}-${(r[0]>>>0).toString(36).toUpperCase().slice(-5)}`;
     }
 
-    // Beep al leer
     function beep(ms=120, freq=880){
       try{
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -275,7 +268,6 @@
     const selectSucursal = $("sucursal");
     const selectUsuario  = $("usuario");
     const btnContinuar   = $("btnContinuar");
-    const btnVolver      = $("btnVolver");
     const viewSetup      = $("view-setup");
     const viewCaptura    = $("view-captura");
 
@@ -288,7 +280,8 @@
     const modal=$("modal"); const cerrarModalBtn=$("cerrarModal"); const inputBuscador=$("buscador"); const resultadosDiv=$("resultados");
     const barraProgreso=$("barraProgreso"); const estado=$("estado"); const contador=$("contador"); const btnPrev=$("prev"); const btnNext=$("next");
 
-    const divLector=$("lector"); const dock=$("dock"); const dockAdd=$("dockAdd"); const dockScan=$("dockScan"); const dockBuscar=$("dockBuscar");
+    const divLector=$("lector"); const dock=$("dock");
+    const dockAdd=$("dockAdd"); const dockScan=$("dockScan"); const dockBuscar=$("dockBuscar"); const dockBack=$("dockBack");
 
     /* ========== Estado & persistencia ========== */
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
@@ -308,14 +301,29 @@
     selectUsuario.addEventListener("change", persistLocal);
     selectSucursal.addEventListener("change", persistLocal);
 
-    /* ===== Navegación ===== */
+    /* ===== Navegación & control de recarga ===== */
+    let lector=null;
+    function toggleBeforeUnload(enable){
+      const handler = (e)=>{ e.preventDefault(); e.returnValue=''; };
+      if(enable){ window.addEventListener('beforeunload', handler); }
+      else{ window.removeEventListener('beforeunload', handler); }
+    }
+
     function setView(which){
       viewSetup.classList.toggle("active", which==="setup");
       viewCaptura.classList.toggle("active", which==="captura");
-      // dock solo en captura y móvil
+      sessionStorage.setItem('lastView', which);
+
       const showDock = which==="captura" && window.matchMedia("(max-width: 640px)").matches;
       dock.style.display = showDock ? "block" : "none";
+
+      // proteger recarga SOLO en captura
+      toggleBeforeUnload(which==="captura");
     }
+
+    // Si alguien recarga estando en captura, forzamos volver a setup al abrir
+    if(sessionStorage.getItem('lastView') === 'captura'){ sessionStorage.setItem('lastView','setup'); }
+
     btnContinuar.addEventListener("click", ()=>{
       if(!selectSucursal.value) return alert("Selecciona una sucursal");
       if(!selectUsuario.value) return alert("Selecciona un usuario");
@@ -323,10 +331,15 @@
       setView("captura");
       setTimeout(()=>inputCodigo.focus(), 100);
     });
-    btnVolver.addEventListener("click", async ()=>{
-      if(lector){ try{ await lector.stop(); }catch{} lector=null; divLector.style.display="none"; }
+
+    async function backToSetup(){
+      try{ if(lector){ await lector.stop(); } }catch(e){}
+      lector=null; divLector.style.display="none";
       setView("setup");
-    });
+      window.scrollTo({top:0,behavior:"instant"});
+    }
+    dockBack.addEventListener("click", backToSetup);
+
     window.addEventListener("resize", ()=> setView(viewCaptura.classList.contains("active") ? "captura" : "setup"));
 
     /* ===== Lógica de productos ===== */
@@ -458,18 +471,18 @@
     /* ===== Buscador ===== */
     function abrirModal(){ modal.style.display="flex"; inputBuscador.focus(); }
     function cerrarModal(){ modal.style.display="none"; resultadosDiv.innerHTML=""; contador.textContent=""; estado.textContent=""; barraProgreso.value=0; }
-    cerrarModalBtn.addEventListener("click", cerrarModal);
+    $("cerrarModal").addEventListener("click", cerrarModal);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
 
     let resultados=[], pagina=0; const porPagina=20; let debounceTimer;
-    inputBuscador.addEventListener("input", ()=>{
+    $("buscador").addEventListener("input", ()=>{
       clearTimeout(debounceTimer);
-      const t = inputBuscador.value.trim();
+      const t = $("buscador").value.trim();
       if(!t){ resultadosDiv.innerHTML=""; contador.textContent=""; return; }
       debounceTimer = setTimeout(()=> buscarProductos(t), 600);
     });
-    btnPrev.addEventListener("click", ()=> mostrarPagina(pagina-1));
-    btnNext.addEventListener("click", ()=> mostrarPagina(pagina+1));
+    $("prev").addEventListener("click", ()=> mostrarPagina(pagina-1));
+    $("next").addEventListener("click", ()=> mostrarPagina(pagina+1));
 
     async function buscarProductos(termino){
       resultados=[]; resultadosDiv.innerHTML="⏳ Buscando..."; barraProgreso.value=10; estado.textContent="";
@@ -520,11 +533,10 @@
         resultadosDiv.appendChild(div);
       });
       contador.textContent=`Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.max(1,Math.ceil(resultados.length/porPagina))}`;
-      btnPrev.disabled=pagina===0; btnNext.disabled=fin>=resultados.length;
+      $("prev").disabled=pagina===0; $("next").disabled=fin>=resultados.length;
     }
 
     /* ===== Escáner ===== */
-    let lector=null;
     async function startStopCam(){
       if(lector){ try{ await lector.stop(); }catch{} lector=null; divLector.style.display="none"; return; }
       divLector.style.display="block";
@@ -538,7 +550,7 @@
             try{ await lector.stop(); }catch{} lector=null; divLector.style.display="none";
             inputCodigo.value=codigo;
             try{ await previsualizar(); beep(); inputCantidad.focus(); }
-            catch{ abrirModal(); inputBuscador.value=codigo; buscarProductos(codigo); }
+            catch{ abrirModal(); $("buscador").value=codigo; buscarProductos(codigo); }
           },
           err=>{}
         );
@@ -549,8 +561,10 @@
     dockAdd.addEventListener("click", agregarYGuardar);
     dockBuscar.addEventListener("click", abrirModal);
     dockScan.addEventListener("click", startStopCam);
+    // Volver también desde dock
+    dockBack.addEventListener("click", backToSetup);
 
-    // Inicia en configuración
+    // Inicia en configuración (y lo persistimos)
     setView("setup");
   </script>
 </body>
