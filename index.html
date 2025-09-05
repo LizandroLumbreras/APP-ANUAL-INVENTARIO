@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <title>INVENTARIOS ANUALES PROVEEDORA</title>
 
-  <!-- Fuente y librerías -->
+  <!-- Fuente y librería del escáner -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -31,14 +31,15 @@
     .folio-box{ background:white; color:#00416A; font-weight:700; padding:6px 12px; border-radius:8px; display:inline-block }
     input,button,select{ font-family:inherit; padding:12px; font-size:16px; border-radius:10px; border:none }
     input[type="text"], input[type="number"]{ width:100%; max-width:320px }
+    /* Cantidad compacta en desktop */
+    .qty{ max-width:140px }
     input[type="number"]{ -moz-appearance:textfield }
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0; }
     select{ min-width:220px }
     .boton{ background:#0c6cbd; color:white; font-weight:700; cursor:pointer; transition:filter .2s; border-radius:12px }
     .boton:active{ filter:brightness(.9) }
-    .btn-danger{ background:#d62828; color:white; font-weight:700 }
-    .btn-ghost{ background:#e8edf6; color:#0c2a5e; font-weight:600; }
+    .btn-ghost{ background:#e8edf6; color:#0c2a5e; font-weight:600; border-radius:12px }
 
     .sec{ margin-top:12px }
     .contenedor-tabla{ background:var(--card); color:#111; border-radius:12px; overflow:hidden; margin-top:14px }
@@ -50,10 +51,7 @@
       background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
       border-radius:12px; padding:10px; display:flex; gap:16px; flex-wrap:wrap
     }
-    /* ocultar costo, importe y fecha en tabla */
-   thead th:nth-child(5),
-tbody td:nth-child(5){ display:none; }
-    
+
     .wm-logo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
     .wm-logo img{
       position:absolute; top:50%; left:50%;
@@ -83,10 +81,6 @@ tbody td:nth-child(5){ display:none; }
       box-shadow: 2px 2px 6px rgba(0,0,0,0.08);
     }
     .precios{ margin-top:6px; display:flex; flex-direction:column; gap:2px; font-size:14px }
-    .precio-publico{ font-weight:700; color:#1a7c1a }
-    .precio-medio{ color:#004080 }
-    .precio-mayoreo{ color:#b36b00 }
-    .paginacion{ display:flex; gap:8px; justify-content:center; align-items:center; padding:8px 0; }
     .btn-ok{ background:#1e8e3e; color:white; font-weight:700; border-radius:10px; padding:8px 10px }
 
     /* Tarjeta de previsualización */
@@ -97,8 +91,6 @@ tbody td:nth-child(5){ display:none; }
     .preview .title{ font-weight:700; color:#0c2a5e }
     .preview .row{ display:flex; gap:12px; flex-wrap:wrap; margin-top:6px }
     .preview .pill{ background:#e8edf6; padding:6px 12px; border-radius:999px; font-weight:600; }
-    .ok{ color:#1e8e3e; font-weight:700 }
-    .warn{ color:#b36b00; font-weight:700 }
 
     /* ====== MOBILE ====== */
     @media (max-width: 640px){
@@ -107,7 +99,7 @@ tbody td:nth-child(5){ display:none; }
       .fila{ gap:8px }
       label{ width:100%; font-size:14px; opacity:.95 }
       input[type="text"], input[type="number"], select{ max-width:none; width:100% }
-      .boton, .btn-danger, .btn-ghost{ width:100% }
+      .boton, .btn-ghost{ width:100% }
       .contenedor-tabla{ border-radius:12px; overflow:hidden }
       /* Tabla -> Cards */
       table{ border:0; min-width:0 }
@@ -125,6 +117,7 @@ tbody td:nth-child(5){ display:none; }
         font-weight:700; color:#0c2a5e; margin-right:12px;
       }
       tbody td:last-child{ border-bottom:0 }
+
       /* Dock de acciones rápidas */
       .dock{
         position:fixed; left:0; right:0; bottom:0; z-index:60;
@@ -134,11 +127,11 @@ tbody td:nth-child(5){ display:none; }
       }
       .dock .row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px }
       .dock .row button{ padding:12px 10px; border-radius:14px; font-weight:800; font-size:15px }
+      .qty{ max-width:none; width:100% } /* cantidad full en móvil */
     }
 
     @media (max-width: 380px){
       .dock .row{ grid-template-columns:1fr 1fr; }
-      /* Agregar ocupa toda la fila */
       .dock .row button[data-role="add"]{ grid-column:1 / -1 }
     }
 
@@ -156,46 +149,31 @@ tbody td:nth-child(5){ display:none; }
       <span class="chip" id="chipModo">Modo: Acumular</span>
     </div>
 
-    <!-- Palabra clave + Sucursal + Usuario -->
     <div class="fila sec">
-
       <label for="sucursal">Sucursal:</label>
       <select id="sucursal">
         <option value="">-- Selecciona sucursal --</option>
-        <option>osito</option>
-        <option>provileon</option>
-        <option>central</option>
-        <option>matriz</option>
-        <option>bodega saul</option>
-        <option>bodega abarrotes</option>
-        <option>bodega dulces</option>
-        <option>zapata</option>
-        <option>allende</option>
-        <option>allende 2</option>
+        <option>osito</option><option>provileon</option><option>central</option><option>matriz</option>
+        <option>bodega saul</option><option>bodega abarrotes</option><option>bodega dulces</option>
+        <option>zapata</option><option>allende</option><option>allende 2</option>
       </select>
 
       <label for="usuario">Usuario:</label>
       <select id="usuario">
         <option value="">-- Selecciona usuario --</option>
-        <option value="Blanca">Blanca</option>
-        <option value="Lizandro">Lizandro</option>
-        <option value="Edgardo">Edgardo</option>
-        <option value="Fernanda">Fernanda</option>
-        <option value="Vansessa">Vansessa</option>
-        <option value="Esmeralda">Esmeralda</option>
-        <option value="Gibran">Gibran</option>
-        <option value="Roberto">Roberto</option>
-        <option value="Usuario 1">Usuario 1</option>
-        <option value="Usuario 2">Usuario 2</option>
-        <option value="Usuario 3">Usuario 3</option>
-        <option value="Usuario 4">Usuario 4</option>
+        <option value="Blanca">Blanca</option><option value="Lizandro">Lizandro</option>
+        <option value="Edgardo">Edgardo</option><option value="Fernanda">Fernanda</option>
+        <option value="Vansessa">Vansessa</option><option value="Esmeralda">Esmeralda</option>
+        <option value="Gibran">Gibran</option><option value="Roberto">Roberto</option>
+        <option value="Usuario 1">Usuario 1</option><option value="Usuario 2">Usuario 2</option>
+        <option value="Usuario 3">Usuario 3</option><option value="Usuario 4">Usuario 4</option>
         <option value="Usuario 5">Usuario 5</option>
       </select>
     </div>
 
     <div class="fila sec">
       <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric">
-      <input type="number" id="cantidad" placeholder="Cantidad" value="1.000" step="0.001" min="0.001" inputmode="decimal">
+      <input type="number" id="cantidad" class="qty" placeholder="Cantidad" step="0.001" min="0.001" inputmode="decimal">
       <button class="boton" id="agregar">➕ Agregar (guardar)</button>
       <button class="boton" id="abrirBuscador">🔎 Buscar</button>
       <button class="boton" id="scanBtn">📷 Escanear</button>
@@ -218,7 +196,7 @@ tbody td:nth-child(5){ display:none; }
       <table>
         <thead>
           <tr>
-           <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Fecha</th>
+            <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Fecha</th>
           </tr>
         </thead>
         <tbody id="tabla-productos"></tbody>
@@ -273,11 +251,9 @@ tbody td:nth-child(5){ display:none; }
   </footer>
 
   <script type="module">
-    // ----------------- Firebase -----------------
+    // --------- Firebase ----------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getFirestore, collection, addDoc, getDocs, getDoc, query, where, doc, limit
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, getDoc, query, where, doc, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
@@ -289,39 +265,63 @@ tbody td:nth-child(5){ display:none; }
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db  = getFirestore(app);
     const DEC_CANTIDAD = 3;
 
-    // ----------------- Utilidades -----------------
+    // --------- Utils ----------
     const pad2 = (n) => String(n).padStart(2,'0');
     const fechaLocal = (d = new Date()) =>
-      `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ` +
-      `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+      `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
     const roundTo = (num, dec) => Math.round((Number(num) + Number.EPSILON) * 10**dec) / 10**dec;
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
-    );
 
-    const inputCodigo = $("codigo");
+    // Folio único con sufijo aleatorio cripto (evita colisiones entre usuarios)
+    function generarFolio() {
+      const d = new Date();
+      const p = n => String(n).padStart(2,'0');
+      const ymd = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+      const buf = new Uint32Array(1);
+      (self.crypto || window.crypto).getRandomValues(buf);
+      const rand = (buf[0] >>> 0).toString(36).toUpperCase().slice(-5);
+      return `AnualesPDD-${ymd}-${rand}`;
+    }
+
+    // Beep corto al leer código
+    function beep(ms=120, freq=880){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        osc.connect(gain); gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start();
+        setTimeout(()=>{ osc.stop(); ctx.close(); }, ms);
+      }catch(e){ /* silencioso si no hay WebAudio */ }
+    }
+
+    // --------- DOM refs ----------
+    const inputCodigo   = $("codigo");
     const inputCantidad = $("cantidad");
     const selectUsuario = $("usuario");
-    const selectSucursal = $("sucursal");
-    const btnAgregar = $("agregar");
-    const folioSpan = $("folio");
-    const tabla = $("tabla-productos");
-    const tRenglones = $("tRenglones");
-    const tCantidad = $("tCantidad");
+    const selectSucursal= $("sucursal");
+    const btnAgregar    = $("agregar");
+    const folioSpan     = $("folio");
+    const tabla         = $("tabla-productos");
+    const tRenglones    = $("tRenglones");
+    const tCantidad     = $("tCantidad");
 
-    const chipModo = $("chipModo");
+    const chipModo      = $("chipModo");
 
-    // Preview nodes
+    // Preview
     const previewBox = $("preview");
     const pDesc = $("pDesc");
     const pCodigo = $("pCodigo");
     const pPeso = $("pPeso");
     const pAviso = $("pAviso");
 
-    // Modal buscador
+    // Buscador
     const modal = $("modal");
     const abrirBuscadorBtn = $("abrirBuscador");
     const cerrarModalBtn = $("cerrarModal");
@@ -337,35 +337,22 @@ tbody td:nth-child(5){ display:none; }
     const scanBtn = $("scanBtn");
     const divLector = $("lector");
 
-    // Dock (mobile)
+    // Dock
     const dock = $("dock");
     const dockAdd = $("dockAdd");
     const dockScan = $("dockScan");
     const dockBuscar = $("dockBuscar");
 
-    // ----------------- Estado -----------------
+    // --------- Estado ----------
     let ultimoRegistro = null;
     let productoPreview = null;
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
     let cacheProductos = JSON.parse(localStorage.getItem("cacheProductosAnuales") || "{}");
 
     chipModo.textContent = "Modo: Acumular";
-
-    // buscador
-    let resultados = [];
-    let pagina = 0;
-    const porPagina = 20;
-
-    // Cargar estado (incluye sucursal/usuario)
-    const usuarioPrevio = localStorage.getItem("usuarioInventarioAnuales") || "";
-    const sucursalPrev = localStorage.getItem("sucursalInventarioAnuales") || "";
-    if (usuarioPrevio) selectUsuario.value = usuarioPrevio;
-    if (sucursalPrev) selectSucursal.value = sucursalPrev;
-
     folioSpan.textContent = folio;
-    renderTablaUltimo();
 
-    // Mostrar dock si pantalla pequeña
+    // Mostrar dock según tamaño
     const mostrarDock = () => {
       if (window.matchMedia("(max-width: 640px)").matches) dock.style.display = "block";
       else dock.style.display = "none";
@@ -373,16 +360,7 @@ tbody td:nth-child(5){ display:none; }
     mostrarDock();
     window.addEventListener("resize", mostrarDock);
 
-    // ----------------- Generar folio -----------------
-   function generarFolio() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const y = d.getFullYear(), m = pad(d.getMonth()+1), day = pad(d.getDate());
-  const hh = pad(d.getHours()), mm = pad(d.getMinutes()), ss = pad(d.getSeconds());
-  return `AnualesPDD-${y}${m}${day}-${hh}${mm}${ss}`;
-}
-
-    // ----------------- Balanzas -----------------
+    // --------- Balanzas ----------
     function detectarCodigoPeso(codigoStr){
       if(/^\d{13}$/.test(codigoStr) && codigoStr.startsWith("20")){
         const base = codigoStr.substring(0,7);
@@ -393,7 +371,7 @@ tbody td:nth-child(5){ display:none; }
       return null;
     }
 
-    // ----------------- Resolución de producto -----------------
+    // --------- Productos ----------
     async function buscarEnEquivalencias(codigoInput) {
       const codigoStr = String(codigoInput).trim();
       const q = query(collection(db,"productos"), where("codigosEquivalentes","array-contains",codigoStr));
@@ -417,7 +395,7 @@ tbody td:nth-child(5){ display:none; }
     async function resolverProducto(codigoInput){
       const codigoStr = String(codigoInput).trim();
 
-      // ¿código de balanza?
+      // Peso/balanza
       const detectado = detectarCodigoPeso(codigoStr);
       if(detectado){
         const eq = await buscarEnEquivalencias(detectado.base);
@@ -434,80 +412,68 @@ tbody td:nth-child(5){ display:none; }
         }
       }
 
-      // cache
       if(cacheProductos[codigoStr]) return cacheProductos[codigoStr];
 
       // codigoBarra
-      let q = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",codigoStr), limit(1));
-      let snap = await getDocs(q);
-      if(!snap.empty){
-        const d = snap.docs[0].data();
-        return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id };
+      let q1 = query(collection(db,"productos"), where("activo","==",true), where("codigoBarra","==",codigoStr), limit(1));
+      let s1 = await getDocs(q1);
+      if(!s1.empty){
+        const d = s1.docs[0].data();
+        return { descripcion: d.concepto ?? "Sin desc", codigo: s1.docs[0].id };
       }
 
       // equivalentes
       const eq = await buscarEnEquivalencias(codigoStr);
       if(eq && eq.principal){
         const d = eq.data || (await getProductoPorId(eq.principal));
-        if(d){
-          return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal };
-        }
+        if(d){ return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal }; }
       }
 
       // id directo
       const byId = await getProductoPorId(codigoStr);
-      if(byId){
-        return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id };
-      }
+      if(byId){ return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id }; }
 
       throw new Error("Producto no encontrado");
     }
 
-    // ----------------- PREVISUALIZACIÓN -----------------
+    // --------- Previsualización ----------
     async function previsualizar(){
       const codigo = (inputCodigo.value||"").trim();
       if(!codigo){ ocultarPreview(); return; }
 
-      try{
-        const p = await resolverProducto(codigo);
-       productoPreview = { descripcion:p.descripcion, codigo:p.codigo, cantidad: p.cantidad, isPeso: !!p.isPeso };
+      const p = await resolverProducto(codigo);
+      productoPreview = { descripcion:p.descripcion, codigo:p.codigo, cantidad: p.cantidad, isPeso: !!p.isPeso };
 
+      pDesc.textContent   = p.descripcion || "SIN DESCRIPCIÓN";
+      pCodigo.textContent = `Código: ${p.codigo}`;
 
-        // Pintar UI
-        pDesc.textContent = p.descripcion || "SIN DESCRIPCIÓN";
-        pCodigo.textContent = `Código: ${p.codigo}`;
-        if(p.isPeso){
-          pPeso.style.display = "inline-block";
-          pPeso.textContent = `Peso detectado: ${fmt(p.cantidad, DEC_CANTIDAD)} kg`;
-          inputCantidad.value = fmt(p.cantidad, DEC_CANTIDAD);
-          pAviso.innerHTML = `<span class="ok">✔ Código de balanza detectado.</span> Ajusta la cantidad si es necesario y luego presiona <b>Agregar</b>.`;
-        }else{
-          pPeso.style.display = "none";
-          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
-        }
-        previewBox.style.display = "block";
-      }catch(e){
-        ocultarPreview();
-        alert("No se encontró el producto");
+      if(p.isPeso){
+        pPeso.style.display = "inline-block";
+        pPeso.textContent = `Peso detectado: ${fmt(p.cantidad, DEC_CANTIDAD)} kg`;
+        inputCantidad.value = fmt(p.cantidad, DEC_CANTIDAD);            // solo si balanza
+        pAviso.innerHTML = `<span class="ok">✔ Código de balanza detectado.</span> Ajusta la cantidad si es necesario y luego presiona <b>Agregar</b>.`;
+      }else{
+        pPeso.style.display = "none";
+        inputCantidad.value = "";                                       // dejar vacío
+        pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
       }
+      previewBox.style.display = "block";
     }
 
     function ocultarPreview(){
       previewBox.style.display = "none";
-      pDesc.textContent = "";
-      pCodigo.textContent = "";
-      pPeso.textContent = "";
+      pDesc.textContent = ""; pCodigo.textContent = ""; pPeso.textContent = ""; pPeso.style.display="none";
       pAviso.textContent = "";
       productoPreview = null;
     }
 
-    // Lanzar preview
+    // Enter en código → previsualiza y enfoca cantidad
     inputCodigo.addEventListener("keydown", e=>{
       if(e.key==="Enter"){ e.preventDefault(); previsualizar().then(()=> inputCantidad.focus()); }
     });
     inputCodigo.addEventListener("blur", ()=>{ if(inputCodigo.value.trim()) previsualizar(); });
 
-    // ----------------- GUARDADO INMEDIATO -----------------
+    // --------- Guardado ----------
     async function guardarRegistroInmediato(item){
       if(!selectSucursal.value) throw new Error("Selecciona una sucursal");
       if(!selectUsuario.value) throw new Error("Selecciona un usuario");
@@ -539,12 +505,11 @@ tbody td:nth-child(5){ display:none; }
       tabla.innerHTML = "";
       if(!ultimoRegistro){
         tRenglones.textContent = "0";
-        tCantidad.textContent = "0.000";
+        tCantidad.textContent  = "0.000";
         return;
       }
       const p = ultimoRegistro;
       const tr = document.createElement("tr");
-      // Para vista “cards” móvil, añade data-label solo a las visibles
       tr.innerHTML = `
         <td data-label="#">1</td>
         <td data-label="Descripción">${p.descripcion}</td>
@@ -554,31 +519,25 @@ tbody td:nth-child(5){ display:none; }
       `;
       tabla.appendChild(tr);
       tRenglones.textContent = "1";
-      tCantidad.textContent = fmt(p.cantidad, DEC_CANTIDAD);
+      tCantidad.textContent  = fmt(p.cantidad, DEC_CANTIDAD);
       persistLocal();
     }
 
-    // ----------------- Agregar (usar preview y guardar) -----------------
+    // Agregar
     const agregarYGuardar = async ()=>{
       try{
         let p = productoPreview;
-        if(!p){
-          await previsualizar();
-          p = productoPreview;
-        }
+        if(!p){ await previsualizar(); p = productoPreview; }
         if(!p) throw new Error("Primero escanea/escribe un código válido");
 
-        let cantidad = roundTo(parseFloat(inputCantidad.value|| (p.cantidad ?? "1")), DEC_CANTIDAD);
+        let cantidad = roundTo(parseFloat(inputCantidad.value || (p.cantidad ?? "1")), DEC_CANTIDAD);
         if(isNaN(cantidad) || cantidad<=0) throw new Error("Cantidad inválida");
 
-        await guardarRegistroInmediato({
-          descripcion: p.descripcion,
-          codigo: p.codigo,
-          cantidad
-        });
+        await guardarRegistroInmediato({ descripcion: p.descripcion, codigo: p.codigo, cantidad });
 
+        // limpiar para siguiente
         inputCodigo.value = "";
-        inputCantidad.value = "1.000";
+        inputCantidad.value = "";           // queda vacío
         ocultarPreview();
         inputCodigo.focus();
       }catch(e){
@@ -591,23 +550,23 @@ tbody td:nth-child(5){ display:none; }
       if(e.key==="Enter"){ e.preventDefault(); agregarYGuardar(); }
     });
 
-    // ----------------- Buscador (modal) -----------------
+    // --------- Buscador ----------
     function abrirModal(){ modal.style.display="flex"; inputBuscador.focus(); }
     function cerrarModal(){ modal.style.display="none"; resultadosDiv.innerHTML=""; contador.textContent=""; estado.textContent=""; barraProgreso.value=0; }
-    abrirBuscadorBtn.addEventListener("click", abrirModal);
-    cerrarModalBtn.addEventListener("click", cerrarModal);
+    $("abrirBuscador").addEventListener("click", abrirModal);
+    $("cerrarModal").addEventListener("click", cerrarModal);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
 
-    let debounceTimer;
-    inputBuscador.addEventListener("input", ()=>{
+    let resultados=[], pagina=0; const porPagina=20; let debounceTimer;
+
+    $("buscador").addEventListener("input", ()=>{
       clearTimeout(debounceTimer);
       const termino = inputBuscador.value.trim();
       if(!termino){ resultadosDiv.innerHTML=""; contador.textContent=""; return; }
       debounceTimer = setTimeout(()=> buscarProductos(termino), 600);
     });
-
-    btnPrev.addEventListener("click", ()=> mostrarPagina(pagina-1));
-    btnNext.addEventListener("click", ()=> mostrarPagina(pagina+1));
+    $("prev").addEventListener("click", ()=> mostrarPagina(pagina-1));
+    $("next").addEventListener("click", ()=> mostrarPagina(pagina+1));
 
     async function buscarProductos(termino){
       resultados = [];
@@ -622,9 +581,7 @@ tbody td:nth-child(5){ display:none; }
         if(s1.empty){
           const q2 = query(collection(db,"productos"), where("activo","==",true), where("codigosEquivalentes","array-contains",termino), limit(1));
           const s2 = await getDocs(q2);
-          if(!s2.empty){
-            s1 = s2; encontradoEn = "equivalente";
-          }
+          if(!s2.empty){ s1 = s2; encontradoEn = "equivalente"; }
         }
 
         if(!s1.empty){
@@ -675,10 +632,6 @@ tbody td:nth-child(5){ display:none; }
         const div = document.createElement("div");
         div.className = "producto-card";
 
-        const precioPublico = p.precioPublico!=null ? Number(p.precioPublico) : (p.precio!=null ? Number(p.precio) : null);
-        const medio = p.medioMayoreo!=null ? Number(p.medioMayoreo) : null;
-        const mayo = p.mayoreo!=null ? Number(p.mayoreo) : null;
-
         const equivBadge = p.coincidencia==="equivalente"
           ? `<div style="color:#b00; font-size:12px">🔗 Coincidencia en equivalente (${p.codigoBuscado})</div>`
           : "";
@@ -687,26 +640,22 @@ tbody td:nth-child(5){ display:none; }
           <b>${p.concepto || "SIN CONCEPTO"}</b><br>
           Código: ${p.codigoBarra || p.id}
           ${equivBadge}
-          <div class="precios">
-            <span class="precio-publico">Público: $${precioPublico!=null ? precioPublico.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
-            <span class="precio-medio">Medio Mayoreo: $${medio!=null ? medio.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
-            <span class="precio-mayoreo">Mayoreo: $${mayo!=null ? mayo.toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—"}</span>
-          </div>
           <div style="margin-top:8px">
             <button class="btn-ok">Usar en previsualización</button>
           </div>
         `;
 
-div.querySelector(".btn-ok").addEventListener("click", ()=>{
-  productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id };
-  pDesc.textContent = productoPreview.descripcion;
-  pCodigo.textContent = `Código: ${productoPreview.codigo}`;
-  pPeso.style.display = "none";
-  pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
-  previewBox.style.display = "block";
-  cerrarModal();
-  inputCantidad.focus();
-});
+        div.querySelector(".btn-ok").addEventListener("click", ()=>{
+          productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id };
+          pDesc.textContent = productoPreview.descripcion;
+          pCodigo.textContent = `Código: ${productoPreview.codigo}`;
+          pPeso.style.display = "none";
+          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
+          previewBox.style.display = "block";
+          cerrarModal();
+          inputCantidad.value = "";
+          inputCantidad.focus();
+        });
 
         resultadosDiv.appendChild(div);
       });
@@ -716,7 +665,7 @@ div.querySelector(".btn-ok").addEventListener("click", ()=>{
       btnNext.disabled = fin >= resultados.length;
     }
 
-    // ----------------- Escáner (solo previsualiza; no guarda) -----------------
+    // --------- Escáner (cierra al leer, muestra desc, beep y enfoca cantidad) ----------
     let lector = null;
     scanBtn.addEventListener("click", startStopCam);
     dockScan.addEventListener("click", startStopCam);
@@ -736,10 +685,15 @@ div.querySelector(".btn-ok").addEventListener("click", ()=>{
           { facingMode: "environment" },
           { fps: 10, qrbox: box },
           async codigo => {
-            await lector.stop(); lector = null; divLector.style.display="none";
+            try{
+              // Detener cámara inmediatamente
+              await lector.stop(); lector = null; divLector.style.display="none";
+            }catch(_){}
+            // Setear código, previsualizar, beep y enfocar cantidad
             inputCodigo.value = codigo;
             try{
               await previsualizar();
+              beep();                 // sonido de confirmación
               inputCantidad.focus();
             }catch(e){
               abrirModal();
@@ -755,7 +709,7 @@ div.querySelector(".btn-ok").addEventListener("click", ()=>{
       }
     }
 
-    // ----------------- Persistencia mínima -----------------
+    // --------- Persistencia mínima ----------
     function persistLocal(){
       localStorage.setItem("folioInventarioAnuales", folio);
       localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
@@ -764,7 +718,7 @@ div.querySelector(".btn-ok").addEventListener("click", ()=>{
     selectUsuario.addEventListener("change", persistLocal);
     selectSucursal.addEventListener("change", persistLocal);
 
-    // ---- Dock botones (reusan la lógica principal)
+    // Dock acciones
     dockAdd.addEventListener("click", ()=> $("agregar").click());
     dockBuscar.addEventListener("click", ()=> $("abrirBuscador").click());
   </script>
