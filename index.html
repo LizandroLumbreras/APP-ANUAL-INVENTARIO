@@ -138,6 +138,28 @@
     @media (min-width:720px){ .modal .grid{ grid-template-columns:1fr 1fr } }
     .producto-card{ border:2px solid #333; border-radius:10px; padding:10px; background:#fff; box-shadow:2px 2px 6px rgba(0,0,0,0.08) }
     .btn-ok{ background:#1e8e3e; color:white; font-weight:700; border-radius:10px; padding:8px 10px }
+   
+  /* === Botones de icono (toolbar) === */
+.icon-btn{
+  display:grid; place-items:center;
+  padding:0;                /* sin relleno extra */
+  width:clamp(44px, 10vw, 56px);
+  height:clamp(44px, 10vw, 56px);   /* objetivo táctil >= 44px */
+  border-radius:14px;
+  font-size:clamp(22px, 5.8vw, 28px); /* ícono grande */
+  line-height:1;
+}
+
+/* variantes visuales (usa tus clases existentes) */
+.icon-btn.boton{ background:#0c6cbd; color:#fff }
+.icon-btn.btn-ghost{ background:#e8edf6; color:#0c2a5e }
+
+/* grid compacto para la fila de la toolbar */
+.toolbar .row{
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  justify-items:center;
+  gap:10px;
+}
   </style>
 </head>
 <body>
@@ -179,15 +201,15 @@
     <!-- ===== Pantalla 2: Captura ===== -->
     <section id="view-captura" class="view">
       <!-- Toolbar superior (reemplaza el dock inferior) -->
-      <div class="toolbar">
-        <div class="row">
-          <button class="btn-ghost" id="tbBack">⬅ Volver</button>
-          <button class="btn-ghost" id="tbBuscar">🔎 Buscar</button>
-          <button class="btn-ghost" id="tbScan">📷 Escanear</button>
-          <button class="btn-ghost" id="tbCart">🛒 Carrito</button>
-          <button class="boton" id="tbAdd">➕ Agregar</button>
-        </div>
-      </div>
+<div class="toolbar">
+  <div class="row">
+    <button class="btn-ghost icon-btn" id="tbBack"   title="Volver"  aria-label="Volver">⬅️</button>
+    <button class="btn-ghost icon-btn" id="tbBuscar" title="Buscar"  aria-label="Buscar">🔎</button>
+    <button class="btn-ghost icon-btn" id="tbScan"   title="Escanear" aria-label="Escanear">📷</button>
+    <button class="btn-ghost icon-btn" id="tbCart"   title="Carrito" aria-label="Carrito">🛒</button>
+    <button class="boton icon-btn"    id="tbAdd"    title="Agregar" aria-label="Agregar">➕</button>
+  </div>
+</div>
 
       <div class="fila sec">
         <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric">
@@ -606,12 +628,6 @@
     tbBuscar.addEventListener("click", ()=> abrirModal());
     tbScan.addEventListener("click", startStopCam);
     tbCart.addEventListener("click", abrirCarrito);
-
-    /* Modal search handlers (reused from before) */
-    let debounceTimer;
-    let resultados=[], pagina=0; const porPagina=20;
-    btnPrev.addEventListener("click", ()=>mostrarPagina(pagina-1));
-    btnNext.addEventListener("click", ()=>mostrarPagina(pagina+1));
 
     /* Inicia en setup */
     setView("setup");
