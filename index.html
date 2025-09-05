@@ -7,7 +7,6 @@
 
   <!-- Fuente y librerías -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
 
   <style>
@@ -52,9 +51,9 @@
       border-radius:12px; padding:10px; display:flex; gap:16px; flex-wrap:wrap
     }
     /* ocultar costo, importe y fecha en tabla */
-    thead th:nth-child(5), thead th:nth-child(6), thead th:nth-child(7),
-    tbody td:nth-child(5), tbody td:nth-child(6), tbody td:nth-child(7){display:none;}
-
+   thead th:nth-child(5),
+tbody td:nth-child(5){ display:none; }
+    
     .wm-logo{ position:fixed; inset:0; z-index:0; pointer-events:none; }
     .wm-logo img{
       position:absolute; top:50%; left:50%;
@@ -159,8 +158,6 @@
 
     <!-- Palabra clave + Sucursal + Usuario -->
     <div class="fila sec">
-      <label for="palabraClave">Palabra clave:</label>
-      <input type="text" id="palabraClave" placeholder="Ej. BODEGA, URGENTE, PROV" autocomplete="on" inputmode="text">
 
       <label for="sucursal">Sucursal:</label>
       <select id="sucursal">
@@ -210,7 +207,6 @@
       <div class="row">
         <span id="pDesc" class="pill"></span>
         <span id="pCodigo" class="pill"></span>
-        <span id="pPrecio" class="pill"></span>
         <span id="pPeso" class="pill" style="display:none"></span>
       </div>
       <div id="pAviso" style="margin-top:8px" class="muted"></div>
@@ -222,7 +218,7 @@
       <table>
         <thead>
           <tr>
-           <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Costo</th><th>Importe</th><th>Fecha</th>
+           <th>#</th><th>Descripción</th><th>Código</th><th>Cantidad</th><th>Fecha</th>
           </tr>
         </thead>
         <tbody id="tabla-productos"></tbody>
@@ -283,8 +279,6 @@
       getFirestore, collection, addDoc, getDocs, getDoc, query, where, doc, limit
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const DEC_CANTIDAD = 3, DEC_PRECIO = 2, DEC_IMPORTE = 2;
-
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -296,6 +290,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const DEC_CANTIDAD = 3;
 
     // ----------------- Utilidades -----------------
     const pad2 = (n) => String(n).padStart(2,'0');
@@ -305,14 +300,8 @@
     const roundTo = (num, dec) => Math.round((Number(num) + Number.EPSILON) * 10**dec) / 10**dec;
     const fmt = (num, dec) => Number(num ?? 0).toFixed(dec);
     const $ = (id) => document.getElementById(id);
-    const obtenerCosto = (d) => Number(
-      d?.costoSinImpuesto ??
-      d?.costoSinImpuestos ??
-      d?.costo_sin_impuesto ??
-      d?.costo ?? 0
     );
 
-    const inputClave = $("palabraClave");
     const inputCodigo = $("codigo");
     const inputCantidad = $("cantidad");
     const selectUsuario = $("usuario");
@@ -329,7 +318,6 @@
     const previewBox = $("preview");
     const pDesc = $("pDesc");
     const pCodigo = $("pCodigo");
-    const pPrecio = $("pPrecio");
     const pPeso = $("pPeso");
     const pAviso = $("pAviso");
 
@@ -359,7 +347,6 @@
     let ultimoRegistro = null;
     let productoPreview = null;
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
-    let palabraClaveGuardada = localStorage.getItem("claveInventarioAnuales") || "";
     let cacheProductos = JSON.parse(localStorage.getItem("cacheProductosAnuales") || "{}");
 
     chipModo.textContent = "Modo: Acumular";
@@ -376,7 +363,6 @@
     if (sucursalPrev) selectSucursal.value = sucursalPrev;
 
     folioSpan.textContent = folio;
-    inputClave.value = palabraClaveGuardada;
     renderTablaUltimo();
 
     // Mostrar dock si pantalla pequeña
@@ -388,15 +374,13 @@
     window.addEventListener("resize", mostrarDock);
 
     // ----------------- Generar folio -----------------
-    function generarFolio() {
-      const d = new Date();
-      const y = d.getFullYear(), m = pad2(d.getMonth()+1), day = pad2(d.getDate());
-      const hh = pad2(d.getHours()), mm = pad2(d.getMinutes()), ss = pad2(d.getSeconds());
-      let base = `AnualesPDD-${y}${m}${day}-${hh}${mm}${ss}`;
-      const clave = inputClave?.value.trim();
-      if (clave) base += `-${clave.replace(/\s+/g,"_").toUpperCase()}`;
-      return base;
-    }
+   function generarFolio() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const y = d.getFullYear(), m = pad(d.getMonth()+1), day = pad(d.getDate());
+  const hh = pad(d.getHours()), mm = pad(d.getMinutes()), ss = pad(d.getSeconds());
+  return `AnualesPDD-${y}${m}${day}-${hh}${mm}${ss}`;
+}
 
     // ----------------- Balanzas -----------------
     function detectarCodigoPeso(codigoStr){
@@ -443,7 +427,6 @@
             return {
               descripcion: d.concepto ?? "Sin descripción",
               codigo: eq.principal,
-              costo: obtenerCosto(d),
               cantidad: roundTo(detectado.pesoKg, DEC_CANTIDAD),
               isPeso: true
             };
@@ -459,7 +442,7 @@
       let snap = await getDocs(q);
       if(!snap.empty){
         const d = snap.docs[0].data();
-        return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id, costo: obtenerCosto(d) };
+        return { descripcion: d.concepto ?? "Sin desc", codigo: snap.docs[0].id };
       }
 
       // equivalentes
@@ -467,14 +450,14 @@
       if(eq && eq.principal){
         const d = eq.data || (await getProductoPorId(eq.principal));
         if(d){
-          return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal, costo: obtenerCosto(d) };
+          return { descripcion: d.concepto ?? "Sin desc", codigo: eq.principal };
         }
       }
 
       // id directo
       const byId = await getProductoPorId(codigoStr);
       if(byId){
-        return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id, costo: obtenerCosto(byId) };
+        return { descripcion: byId.concepto ?? "Sin desc", codigo: byId.id };
       }
 
       throw new Error("Producto no encontrado");
@@ -487,12 +470,12 @@
 
       try{
         const p = await resolverProducto(codigo);
-        productoPreview = { descripcion:p.descripcion, codigo:p.codigo, costo: Number(p.costo ?? 0), cantidad: p.cantidad, isPeso: !!p.isPeso };
+       productoPreview = { descripcion:p.descripcion, codigo:p.codigo, cantidad: p.cantidad, isPeso: !!p.isPeso };
+
 
         // Pintar UI
         pDesc.textContent = p.descripcion || "SIN DESCRIPCIÓN";
         pCodigo.textContent = `Código: ${p.codigo}`;
-        pPrecio.textContent = `Costo: $${fmt(p.costo ?? 0, DEC_PRECIO)}`;
         if(p.isPeso){
           pPeso.style.display = "inline-block";
           pPeso.textContent = `Peso detectado: ${fmt(p.cantidad, DEC_CANTIDAD)} kg`;
@@ -513,7 +496,6 @@
       previewBox.style.display = "none";
       pDesc.textContent = "";
       pCodigo.textContent = "";
-      pPrecio.textContent = "";
       pPeso.textContent = "";
       pAviso.textContent = "";
       productoPreview = null;
@@ -531,7 +513,6 @@
       if(!selectUsuario.value) throw new Error("Selecciona un usuario");
 
       const folioRegistro = generarFolio();
-      const costo = Number(item.costo ?? 0);
 
       const registro = {
         folioSesion: folio,
@@ -540,13 +521,9 @@
         epochMs: Date.now(),
         sucursal: selectSucursal.value,
         usuario: selectUsuario.value,
-        palabraClave: inputClave.value.trim() || null,
-
         descripcion: item.descripcion,
         codigo: item.codigo,
-        cantidad: Number(item.cantidad || 0),
-        costo,
-        importe: roundTo((+item.cantidad||0) * costo, DEC_IMPORTE)
+        cantidad: Number(item.cantidad || 0)
       };
 
       await addDoc(
@@ -573,8 +550,6 @@
         <td data-label="Descripción">${p.descripcion}</td>
         <td data-label="Código">${p.codigo}</td>
         <td data-label="Cantidad">${fmt(p.cantidad, DEC_CANTIDAD)}</td>
-        <td>$${fmt(p.costo, DEC_PRECIO)}</td>
-        <td>$${fmt(p.importe, DEC_IMPORTE)}</td>
         <td>${p.fecha || ""}</td>
       `;
       tabla.appendChild(tr);
@@ -599,7 +574,6 @@
         await guardarRegistroInmediato({
           descripcion: p.descripcion,
           codigo: p.codigo,
-          costo: Number(p.costo ?? 0),
           cantidad
         });
 
@@ -654,7 +628,7 @@
         }
 
         if(!s1.empty){
-          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), costo: obtenerCosto(d.data()), coincidencia:encontradoEn, codigoBuscado:termino }));
+          resultados = s1.docs.map(d => ({ id:d.id, ...d.data(), coincidencia:encontradoEn, codigoBuscado:termino }));
         }else{
           resultadosDiv.innerHTML = "❌ No se encontró este código en productos ni en equivalentes";
           contador.textContent = "";
@@ -723,18 +697,16 @@
           </div>
         `;
 
-        div.querySelector(".btn-ok").addEventListener("click", ()=>{
-          const costo = obtenerCosto(p);
-          productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id, costo };
-          pDesc.textContent = productoPreview.descripcion;
-          pCodigo.textContent = `Código: ${productoPreview.codigo}`;
-          pPrecio.textContent = `Costo: $${fmt(costo, DEC_PRECIO)}`;
-          pPeso.style.display = "none";
-          pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
-          previewBox.style.display = "block";
-          cerrarModal();
-          inputCantidad.focus();
-        });
+div.querySelector(".btn-ok").addEventListener("click", ()=>{
+  productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id };
+  pDesc.textContent = productoPreview.descripcion;
+  pCodigo.textContent = `Código: ${productoPreview.codigo}`;
+  pPeso.style.display = "none";
+  pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b> para guardar.`;
+  previewBox.style.display = "block";
+  cerrarModal();
+  inputCantidad.focus();
+});
 
         resultadosDiv.appendChild(div);
       });
@@ -786,11 +758,9 @@
     // ----------------- Persistencia mínima -----------------
     function persistLocal(){
       localStorage.setItem("folioInventarioAnuales", folio);
-      localStorage.setItem("claveInventarioAnuales", inputClave.value.trim());
       localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
       localStorage.setItem("sucursalInventarioAnuales", selectSucursal.value);
     }
-    inputClave.addEventListener("change", persistLocal);
     selectUsuario.addEventListener("change", persistLocal);
     selectSucursal.addEventListener("change", persistLocal);
 
