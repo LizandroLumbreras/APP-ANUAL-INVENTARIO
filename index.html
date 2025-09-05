@@ -37,6 +37,7 @@
     .boton{ background:#0c6cbd; color:white; font-weight:700; cursor:pointer; transition:filter .2s; border-radius:12px }
     .boton:active{ filter:brightness(.9) }
     .btn-ghost{ background:#e8edf6; color:#0c2a5e; font-weight:600; border-radius:12px }
+    .icon-btn{ width:46px; min-width:46px; padding:10px; text-align:center; font-size:18px }
     .sec{ margin-top:12px }
     .chip{ background:white; color:#00416A; border-radius:100px; padding:4px 10px; font-size:12px; font-weight:600 }
     .muted{opacity:.9}
@@ -49,7 +50,7 @@
     th{ background-color:#00416A; color:white; position:sticky; top:0; z-index:1; text-align:center }
     td{ text-align:center }
 
-    /* Ocultar bloque de resumen */
+    /* Oculto el bloque de resumen anterior */
     .resumen{ display:none !important }
 
     /* Preview */
@@ -72,7 +73,7 @@
       label{ width:100%; font-size:14px; opacity:.95 }
       input[type="text"], input[type="number"], select{ max-width:none; width:100% }
 
-      /* Tabla -> Cards compactas */
+      /* Tabla -> Cards compactas (para el último registro) */
       table{ border:0; min-width:0 } thead{ display:none }
       tbody tr{
         display:block; background:#fff; margin:6px; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;
@@ -82,17 +83,12 @@
         display:flex; justify-content:space-between; align-items:center;
         padding:6px 10px; border-bottom:1px solid #f1f5f9; text-align:left !important; font-size:14px;
       }
-      /* Oculta la columna '#' para compactar */
-      tbody td:first-child{ display:none }
-      /* Etiquetas cortas a la izquierda */
+      tbody td:first-child{ display:none }  /* oculta # */
       tbody td::before{
         content: attr(data-label);
         font-weight:700; color:#0c2a5e; margin-right:12px;
       }
-      /* Fecha pequeña y tenue al final */
-      .fecha-cell{
-        font-size:12px; color:#64748b; justify-content:flex-end;
-      }
+      .fecha-cell{ font-size:12px; color:#64748b; justify-content:flex-end; }
       tbody td:last-child{ border-bottom:0 }
 
       /* Dock */
@@ -102,18 +98,18 @@
         background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,38,73,.25) 20%, rgba(0,65,106,.65) 100%);
         backdrop-filter: blur(8px);
       }
-      .dock .row{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px }
+      .dock .row{ display:grid; grid-template-columns:repeat(5, 1fr); gap:10px }
       .dock .row button{ padding:12px 10px; border-radius:14px; font-weight:800; font-size:15px }
     }
     @media (max-width: 380px){
-      .dock .row{ grid-template-columns:1fr 1fr }
-      .dock .row button[data-role="add"]{ grid-column:1 / -1 }
+      .dock .row{ grid-template-columns:1fr 1fr 1fr 1fr 1fr }
+      .dock .row button[data-role="add"]{ grid-column:auto }
     }
     @media print{ .wm-logo{ display:none } .modal{ display:none !important } .dock{ display:none !important } }
-    
-    /* Modal buscador (igual que antes, recortado) */
+
+    /* Modal buscador */
     .modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:10px }
-    .modal .box{ width:min(960px,96vw); max-height:90vh; overflow:auto; background:#f9f9fb; color:#111; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(0,0,0,.3)}
+    .modal .box{ width:min(960px,96vw); max-height:90vh; overflow:auto; background:#f9f9fb; color:#111; border-radius:12px; padding:14px; box-shadow:0 12px 28px rgba(0,0,0,0.3)}
     .modal header{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px; position:sticky; top:0; background:#f9f9fb; padding-bottom:6px; z-index:1 }
     .modal input[type="text"]{ border:1px solid #ddd; background:white; color:#111; width:min(560px,86vw) }
     .modal .grid{ display:grid; grid-template-columns:1fr; gap:10px }
@@ -160,9 +156,13 @@
 
     <!-- ===== Pantalla 2: Captura ===== -->
     <section id="view-captura" class="view">
-      <div class="fila sec">
-        <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric">
-        <input type="number" id="cantidad" class="qty" placeholder="Cantidad" step="0.001" min="0.001" inputmode="decimal">
+      <div class="fila sec" style="justify-content:space-between; gap:8px">
+        <div style="flex:1 1 460px; display:flex; gap:8px; flex-wrap:wrap">
+          <input type="text" id="codigo" placeholder="Escanea o escribe el código de barras..." autocomplete="off" inputmode="numeric" style="flex:1 1 260px">
+          <input type="number" id="cantidad" class="qty" placeholder="Cantidad" step="0.001" min="0.001" inputmode="decimal">
+        </div>
+        <!-- Botón carrito pequeño (escritorio) -->
+        <button class="btn-ghost icon-btn" id="btnResumenDesk" title="Resumen (🛒)">🛒</button>
       </div>
 
       <!-- Previsualización -->
@@ -193,7 +193,31 @@
           <button class="btn-ghost" id="dockBack">⬅ Volver</button>
           <button class="btn-ghost" id="dockBuscar">🔎 Buscar</button>
           <button class="btn-ghost" id="dockScan">📷 Escanear</button>
+          <button class="btn-ghost icon-btn" id="dockResumen" title="Resumen">🛒</button>
           <button class="boton" data-role="add" id="dockAdd">➕ Agregar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Pantalla 3: Resumen de la sesión ===== -->
+    <section id="view-resumen" class="view">
+      <div class="contenedor-tabla">
+        <table>
+          <thead>
+            <tr><th>Código</th><th>Descripción</th><th>Total</th></tr>
+          </thead>
+          <tbody id="tabla-resumen">
+            <tr><td colspan="3" style="text-align:center;padding:14px">Sin datos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Dock del resumen -->
+      <div class="dock" id="dockResumenBar" style="display:none">
+        <div class="row">
+          <button class="btn-ghost" id="btnVolverCaptura">⬅ Volver</button>
+          <div></div><div></div><div></div>
+          <button class="boton" id="btnIrInicio">🏠 Inicio</button>
         </div>
       </div>
     </section>
@@ -266,7 +290,8 @@
     }
 
     /* Refs */
-    const viewSetup=$("view-setup"), viewCaptura=$("view-captura");
+    const viewSetup=$("view-setup"), viewCaptura=$("view-captura"), viewResumen=$("view-resumen");
+    const tblResumen=$("tabla-resumen");
     const folioSpan=$("folio"), chipModo=$("chipModo");
     const selectSucursal=$("sucursal"), selectUsuario=$("usuario"), btnContinuar=$("btnContinuar");
 
@@ -277,7 +302,10 @@
     const modal=$("modal"), cerrarModalBtn=$("cerrarModal"), inputBuscador=$("buscador"), resultadosDiv=$("resultados");
     const barraProgreso=$("barraProgreso"), estado=$("estado"), contador=$("contador"), btnPrev=$("prev"), btnNext=$("next");
 
-    const divLector=$("lector"), dock=$("dock"), dockAdd=$("dockAdd"), dockScan=$("dockScan"), dockBuscar=$("dockBuscar"), dockBack=$("dockBack");
+    const divLector=$("lector"),
+          dock=$("dock"), dockAdd=$("dockAdd"), dockScan=$("dockScan"), dockBuscar=$("dockBuscar"), dockBack=$("dockBack"),
+          dockResumen=$("dockResumen"), btnResumenDesk=$("btnResumenDesk"),
+          dockResumenBar=$("dockResumenBar"), btnVolverCaptura=$("btnVolverCaptura"), btnIrInicio=$("btnIrInicio");
 
     /* Estado */
     let folio = localStorage.getItem("folioInventarioAnuales") || generarFolio();
@@ -288,6 +316,8 @@
     if (sucursalPrev)  selectSucursal.value = sucursalPrev;
 
     let ultimoRegistro=null, productoPreview=null, cacheProductos=JSON.parse(localStorage.getItem("cacheProductosAnuales")||"{}");
+    let resumenDirty = true; // para recargar cuando abrimos la vista 3
+
     function persistLocal(){
       localStorage.setItem("folioInventarioAnuales", folio);
       localStorage.setItem("usuarioInventarioAnuales", selectUsuario.value);
@@ -305,8 +335,11 @@
     function setView(which){
       viewSetup.classList.toggle("active", which==="setup");
       viewCaptura.classList.toggle("active", which==="captura");
+      viewResumen.classList.toggle("active", which==="resumen");
       sessionStorage.setItem('lastView', which);
       dock.style.display = (which==="captura" && window.matchMedia("(max-width: 640px)").matches) ? "block" : "none";
+      dockResumenBar.style.display = (which==="resumen" && window.matchMedia("(max-width: 640px)").matches) ? "block" : "none";
+      // bloquear refresh solo en captura
       toggleBeforeUnload(which==="captura");
     }
     if(sessionStorage.getItem('lastView')==='captura'){ sessionStorage.setItem('lastView','setup'); }
@@ -326,7 +359,10 @@
       setView("setup"); window.scrollTo({top:0,behavior:"instant"});
     }
     dockBack.addEventListener("click", backToSetup);
-    window.addEventListener("resize", ()=> setView(viewCaptura.classList.contains("active") ? "captura" : "setup"));
+    window.addEventListener("resize", ()=> setView(
+      viewResumen.classList.contains("active") ? "resumen" :
+      (viewCaptura.classList.contains("active") ? "captura" : "setup")
+    ));
 
     /* Productos */
     function detectarCodigoPeso(codigoStr){
@@ -393,6 +429,7 @@
         descripcion: item.descripcion, codigo: item.codigo, cantidad: Number(item.cantidad || 0)
       };
       await addDoc(collection(db,"inventarios", selectSucursal.value, "usuarios", selectUsuario.value, "escaneos"), registro);
+      resumenDirty = true; // marca que hay cambios para el resumen
       ultimoRegistro=registro; renderTablaUltimo();
     }
 
@@ -401,7 +438,6 @@
       if(!ultimoRegistro) return;
       const p=ultimoRegistro;
       const tr=document.createElement("tr");
-      /* Etiquetas cortas para móvil: Desc / Cod / Cant */
       tr.innerHTML=`
         <td data-label="#">1</td>
         <td data-label="Desc">${p.descripcion}</td>
@@ -499,6 +535,39 @@
         );
       }catch(e){ console.error("Error cámara:", e); alert("No se pudo abrir la cámara"); }
     }
+
+    /* ======= Resumen (Pantalla 3) ======= */
+    async function cargarResumenSesion(){
+      // Reúne y agrupa por código los registros del folio actual
+      const colRef = collection(db,"inventarios", selectSucursal.value, "usuarios", selectUsuario.value, "escaneos");
+      const snap = await getDocs(query(colRef, where("folioSesion","==",folio)));
+      const mapa = new Map();
+      snap.forEach(d=>{
+        const r=d.data();
+        const k=r.codigo;
+        const prev = mapa.get(k) || {codigo:k, descripcion:r.descripcion||"", total:0};
+        prev.total += Number(r.cantidad||0);
+        mapa.set(k, prev);
+      });
+
+      const filas = [...mapa.values()].sort((a,b)=> a.descripcion.localeCompare(b.descripcion, 'es'));
+      tblResumen.innerHTML = filas.length
+        ? filas.map(x=>`<tr><td>${x.codigo}</td><td style="text-align:left">${x.descripcion}</td><td>${fmt(x.total, DEC_CANTIDAD)}</td></tr>`).join("")
+        : `<tr><td colspan="3" style="text-align:center;padding:14px">Sin datos…</td></tr>`;
+    }
+
+    function irResumen(){
+      if(!selectSucursal.value || !selectUsuario.value){ alert("Primero selecciona sucursal y usuario en la pantalla inicial."); return; }
+      setView("resumen");
+      if(resumenDirty){ cargarResumenSesion().finally(()=>{ resumenDirty=false; }); }
+    }
+    function volverACaptura(){ setView("captura"); }
+
+    // botones para abrir/volver resumen
+    dockResumen.addEventListener("click", irResumen);
+    btnResumenDesk.addEventListener("click", irResumen);
+    btnVolverCaptura.addEventListener("click", volverACaptura);
+    btnIrInicio.addEventListener("click", backToSetup);
 
     /* Dock acciones */
     dockAdd.addEventListener("click", agregarYGuardar);
