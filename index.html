@@ -494,8 +494,43 @@
     };
 
     /* ------------ Buscador ------------ */
-    function abrirModal(){ modal.style.display="flex"; inputBuscador.focus(); }
-    function cerrarModal(){ modal.style.display="none"; resultadosDiv.innerHTML=""; contador.textContent=""; estado.textContent=""; barraProgreso.value=0; }
+   function abrirModal(){
+  // Estado limpio cada vez
+  inputBuscador.value = "";
+  resultados = [];
+  pagina = 0;
+  resultadosDiv.innerHTML = "";
+  contador.textContent = "";
+  estado.textContent = "";
+  barraProgreso.value = 0;
+  btnPrev.disabled = true;
+  btnNext.disabled = true;
+
+  // Mostrar y enfocar (iOS friendly)
+  modal.style.display = "flex";
+  setTimeout(()=> inputBuscador.focus(), 50);
+}
+   function cerrarModal(){
+  // Ocultar modal
+  modal.style.display = "none";
+
+  // Limpiar campo de búsqueda y estado
+  inputBuscador.value = "";
+  resultados = [];
+  pagina = 0;
+
+  // Limpiar UI
+  resultadosDiv.innerHTML = "";
+  contador.textContent = "";
+  estado.textContent = "";
+  barraProgreso.value = 0;
+  btnPrev.disabled = true;
+  btnNext.disabled = true;
+
+  // Quitar el teclado y volver a enfocar al input de código principal
+  inputBuscador.blur();
+  setTimeout(()=> inputCodigo?.focus(), 50);
+}
     cerrarModalBtn.addEventListener("click", cerrarModal);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
     let resultados=[], pagina=0; const porPagina=20; let debounceTimer;
@@ -582,7 +617,7 @@
       const snap = await getDocs(q);
       const rows = [];
       snap.forEach(d=> rows.push({ id:d.id, ...d.data() }));
-      rows.sort((a,b)=> (a.epochMs||0) - (b.epochMs||0));
+     rows.sort((a,b)=> (b.epochMs ?? 0) - (a.epochMs ?? 0)); // últimos primero
       if(!rows.length){ tablaCarrito.innerHTML = "<tr><td colspan='5'>Sin partidas en este folio.</td></tr>"; return; }
 
       tablaCarrito.innerHTML = rows.map((r,i)=>{
