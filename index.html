@@ -492,44 +492,38 @@
         inputCodigo.value=""; inputCantidad.value=""; ocultarPreview(); inputCodigo.focus();
       }catch(e){ alert(e.message || "Error al guardar"); }
     };
+    let resultados = [], pagina = 0; const porPagina = 20; let debounceTimer;
+let nextFocus = null; // 'codigo' | 'cantidad' | null
 
     /* ------------ Buscador ------------ */
-   function abrirModal(){
-  // Estado limpio cada vez
+  function abrirModal(){
+  nextFocus = 'codigo'; // por defecto, si se cierra sin elegir, vuelve a código
   inputBuscador.value = "";
-  resultados = [];
-  pagina = 0;
-  resultadosDiv.innerHTML = "";
-  contador.textContent = "";
-  estado.textContent = "";
-  barraProgreso.value = 0;
-  btnPrev.disabled = true;
-  btnNext.disabled = true;
+  resultados = []; pagina = 0;
+  resultadosDiv.innerHTML = ""; contador.textContent = "";
+  estado.textContent = ""; barraProgreso.value = 0;
+  btnPrev.disabled = true; btnNext.disabled = true;
 
-  // Mostrar y enfocar (iOS friendly)
   modal.style.display = "flex";
   setTimeout(()=> inputBuscador.focus(), 50);
 }
-   function cerrarModal(){
-  // Ocultar modal
+  function cerrarModal(){
   modal.style.display = "none";
 
-  // Limpiar campo de búsqueda y estado
   inputBuscador.value = "";
-  resultados = [];
-  pagina = 0;
-
-  // Limpiar UI
+  resultados = []; pagina = 0;
   resultadosDiv.innerHTML = "";
   contador.textContent = "";
   estado.textContent = "";
   barraProgreso.value = 0;
-  btnPrev.disabled = true;
-  btnNext.disabled = true;
+  btnPrev.disabled = true; btnNext.disabled = true;
 
-  // Quitar el teclado y volver a enfocar al input de código principal
   inputBuscador.blur();
-  setTimeout(()=> inputCodigo?.focus(), 50);
+  setTimeout(()=>{
+    if(nextFocus === 'cantidad') inputCantidad?.focus();
+    else inputCodigo?.focus();
+    nextFocus = null; // limpiar intención
+  }, 50);
 }
     cerrarModalBtn.addEventListener("click", cerrarModal);
     modal.addEventListener("click", (e)=>{ if(e.target===modal) cerrarModal(); });
@@ -574,11 +568,17 @@
           <div style="margin-top:8px"><button class="btn-ok">Usar en previsualización</button></div>
         `;
         div.querySelector(".btn-ok").addEventListener("click", ()=>{
-          productoPreview={ descripcion:p.concepto || "Sin desc", codigo:p.id };
-          pDesc.textContent=productoPreview.descripcion; pCodigo.textContent=`Código: ${productoPreview.codigo}`;
-          pPeso.style.display="none"; pAviso.innerHTML=`<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b>.`;
-          previewBox.style.display="block"; cerrarModal(); inputCantidad.value=""; inputCantidad.focus();
-        });
+  productoPreview = { descripcion: p.concepto || "Sin desc", codigo: p.id };
+  pDesc.textContent = productoPreview.descripcion;
+  pCodigo.textContent = `Código: ${productoPreview.codigo}`;
+  pPeso.style.display = "none";
+  pAviso.innerHTML = `<span class="warn">⌛ Previsualización lista.</span> Captura la cantidad y presiona <b>Agregar</b>.`;
+  previewBox.style.display = "block";
+
+  inputCantidad.value = ""; // listo para escribir cantidad
+  nextFocus = 'cantidad';   // <<< queremos enfocar cantidad tras cerrar
+  cerrarModal();            // el foco se aplicará aquí
+});
         resultadosDiv.appendChild(div);
       });
       contador.textContent=`Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.max(1,Math.ceil(resultados.length/porPagina))}`;
